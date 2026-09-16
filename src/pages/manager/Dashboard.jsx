@@ -1,12 +1,20 @@
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../auth/useAuth";
+import "../../styles/dashboard.css";
 
 function Dashboard() {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login", { replace: true });
+  };
 
   return (
     <div className="dashboard-page">
 
-      <header className="top-navbar">
+      <nav className="top-navbar">
 
         <div className="brand">
           <div className="brand-box">PMS</div>
@@ -22,20 +30,20 @@ function Dashboard() {
           </div>
         </div>
 
-        <div className="navbar-right">
-          <button className="language-button">
-            मराठी
-          </button>
+        <div className="manager-nav-right">
+          <span>
+            Welcome, {user?.name || "Manager"}
+          </span>
 
           <button
-            className="logout-button"
-            onClick={() => navigate("/login")}
+            className="dashboard-logout-button"
+            onClick={handleLogout}
           >
-            EXIT SYSTEM →
+            LOGOUT
           </button>
         </div>
 
-      </header>
+      </nav>
 
       <main className="dashboard-container">
 
@@ -54,7 +62,9 @@ function Dashboard() {
 
           <div
             className="dashboard-card customer-card"
-            onClick={() => navigate("/manager/customer-id")}
+            onClick={() =>
+              navigate("/manager/customer-id")
+            }
           >
             <div className="card-icon">
               🪪
@@ -74,7 +84,9 @@ function Dashboard() {
 
           <div
             className="dashboard-card register-card"
-            onClick={() => navigate("/manager/register-photo")}
+            onClick={() =>
+              navigate("/manager/register-photo")
+            }
           >
             <div className="card-icon">
               📷

@@ -1,16 +1,18 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../auth/useAuth";
 import "../../styles/tables.css";
 
 function ManagerList() {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
-  // Temporary logged-in Sub Admin
-  // Backend आल्यावर JWT मधून मिळेल.
-  const currentSubAdminId = "SUBADMIN-001";
+  // Logged-in Sub Admin ID
+  const currentSubAdminId = user?.subAdminId;
 
   const [search, setSearch] = useState("");
-  const [editingManager, setEditingManager] = useState(null);
+  const [editingManager, setEditingManager] =
+    useState(null);
 
   const [managers, setManagers] = useState(() => {
     const saved =
@@ -19,6 +21,7 @@ function ManagerList() {
     return saved;
   });
 
+  // Save Managers
   const saveManagers = (updatedManagers) => {
     setManagers(updatedManagers);
 
@@ -28,17 +31,29 @@ function ManagerList() {
     );
   };
 
-  // फक्त या Sub Admin चे Managers
+  // =====================================
+  // ONLY LOGGED-IN SUB ADMIN'S MANAGERS
+  // =====================================
+
   const myManagers = useMemo(() => {
+    if (!currentSubAdminId) {
+      return [];
+    }
+
     return managers.filter(
       (manager) =>
-        manager.createdBySubAdminId === currentSubAdminId
+        manager.createdBySubAdminId ===
+        currentSubAdminId
     );
-  }, [managers]);
+  }, [managers, currentSubAdminId]);
 
+  // =====================================
   // SEARCH
+  // =====================================
+
   const filteredManagers = useMemo(() => {
-    const searchText = search.toLowerCase().trim();
+    const searchText =
+      search.toLowerCase().trim();
 
     if (!searchText) {
       return myManagers;
@@ -62,8 +77,27 @@ function ManagerList() {
     });
   }, [search, myManagers]);
 
+  // =====================================
   // DELETE
+  // =====================================
+
   const handleDelete = (managerId) => {
+    const selectedManager = managers.find(
+      (manager) => manager.id === managerId
+    );
+
+    // Extra frontend safety
+    if (
+      !selectedManager ||
+      selectedManager.createdBySubAdminId !==
+        currentSubAdminId
+    ) {
+      window.alert(
+        "या Manager वर तुम्हाला access नाही."
+      );
+      return;
+    }
+
     const confirmed = window.confirm(
       "हा Manager delete करायचा आहे का?"
     );
@@ -77,36 +111,169 @@ function ManagerList() {
     saveManagers(updatedManagers);
   };
 
+  // =====================================
   // ACTIVE / INACTIVE
-  const toggleStatus = (managerId) => {
-    const updatedManagers = managers.map((manager) => {
-      if (manager.id === managerId) {
-        return {
-          ...manager,
-          status:
-            manager.status === "ACTIVE"
-              ? "INACTIVE"
-              : "ACTIVE",
-        };
-      }
+  // =====================================
 
-      return manager;
-    });
+  const toggleStatus = (managerId) => {
+    const updatedManagers = managers.map(
+      (manager) => {
+        if (
+          manager.id === managerId &&
+          manager.createdBySubAdminId ===
+            currentSubAdminId
+        ) {
+          return {
+            ...manager,
+            status:
+              manager.status === "ACTIVE"
+                ? "INACTIVE"
+                : "ACTIVE",
+          };
+        }
+
+        return manager;
+      }
+    );
 
     saveManagers(updatedManagers);
   };
 
+  // =====================================
+  // OPEN EDIT
+  // =====================================
+
+  const openEdit = (manager) => {
+    if (
+      manager.createdBySubAdminId !==
+      currentSubAdminId
+    ) {
+      window.alert(
+        "या Manager वर तुम्हाला access नाही."
+      );
+      return;
+    }
+
+    setEditingManager({
+      ...manager,
+    });
+  };
+
+  // =====================================
   // EDIT SAVE
+  // =====================================
+
   const handleEditSave = (event) => {
     event.preventDefault();
 
-    const updatedManagers = managers.map((manager) => {
-      if (manager.id === editingManager.id) {
-        return editingManager;
-      }
+    if (!editingManager) {
+      return;
+    }
 
-      return manager;
-    });
+    if (
+      editingManager.createdBySubAdminId !==
+      currentSubAdminId
+    ) {
+      window.alert(
+        "या Manager वर तुम्हाला access नाही."
+      );
+
+      setEditingManager(null);
+      return;
+    }
+
+    if (
+      !editingManager.managerName?.trim() ||
+      !editingManager.managerId?.trim() ||
+      !editingManager.mobile?.trim() ||
+      !editingManager.email?.trim()
+    ) {
+      window.alert(
+        "कृपया सर्व माहिती भरा."
+      );
+      return;
+    }
+
+    if (
+      !/^[0-9]{10}$/.test(
+        editingManager.mobile
+      )
+    ) {
+      window.alert(
+        "Mobile Number 10 अंकी असावा."
+      );
+      return;
+    }
+
+    // Manager ID duplicate check
+    const duplicateManagerId = managers.some(
+      (manager) =>
+        manager.id !== editingManager.id &&
+        manager.managerId?.toLowerCase() ===
+          editingManager.managerId
+            ?.trim()
+            .toLowerCase()
+    );
+
+    if (duplicateManagerId) {
+      window.alert(
+        "हा Manager ID आधीपासून अस्तित्वात आहे."
+      );
+      return;
+    }
+
+    // Email duplicate check
+    const duplicateEmail = managers.some(
+      (manager) =>
+        manager.id !== editingManager.id &&
+        manager.email?.toLowerCase() ===
+          editingManager.email
+            ?.trim()
+            .toLowerCase()
+    );
+
+    if (duplicateEmail) {
+      window.alert(
+        "या Email वर Manager आधीपासून अस्तित्वात आहे."
+      );
+      return;
+    }
+
+    const updatedManagers = managers.map(
+      (manager) => {
+        if (
+          manager.id === editingManager.id &&
+          manager.createdBySubAdminId ===
+            currentSubAdminId
+        ) {
+          return {
+            ...editingManager,
+
+            managerName:
+              editingManager.managerName.trim(),
+
+            managerId:
+              editingManager.managerId
+                .trim()
+                .toUpperCase(),
+
+            mobile:
+              editingManager.mobile.trim(),
+
+            email:
+              editingManager.email
+                .trim()
+                .toLowerCase(),
+
+            // Mapping change होऊ देऊ नका
+            createdBySubAdminId:
+              currentSubAdminId,
+          };
+        }
+
+        return manager;
+      }
+    );
 
     saveManagers(updatedManagers);
 
@@ -121,8 +288,13 @@ function ManagerList() {
       <header className="manager-list-header">
 
         <div>
-          <span>SUB ADMIN</span>
-          <h1>Manager List</h1>
+          <span>
+            SUB ADMIN
+          </span>
+
+          <h1>
+            Manager List
+          </h1>
 
           <p>
             तुम्ही तयार केलेले Managers manage करा
@@ -132,18 +304,24 @@ function ManagerList() {
         <div className="manager-header-actions">
 
           <button
+            type="button"
             className="manager-add-button"
             onClick={() =>
-              navigate("/sub-admin/create-manager")
+              navigate(
+                "/sub-admin/create-manager"
+              )
             }
           >
             + ADD MANAGER
           </button>
 
           <button
+            type="button"
             className="manager-dashboard-button"
             onClick={() =>
-              navigate("/sub-admin/dashboard")
+              navigate(
+                "/sub-admin/dashboard"
+              )
             }
           >
             ← DASHBOARD
@@ -155,20 +333,47 @@ function ManagerList() {
 
       <main className="manager-list-container">
 
+        {/* SUB ADMIN INFO */}
+
+        <section className="manager-current-admin">
+
+          <div>
+            <small>
+              LOGGED IN SUB ADMIN
+            </small>
+
+            <strong>
+              {user?.name || "Sub Admin"}
+            </strong>
+          </div>
+
+          <span>
+            {currentSubAdminId || "-"}
+          </span>
+
+        </section>
+
         {/* SUMMARY */}
 
         <section className="manager-summary">
 
           <div className="manager-summary-card">
-            <small>TOTAL MANAGERS</small>
+
+            <small>
+              TOTAL MANAGERS
+            </small>
 
             <strong>
               {myManagers.length}
             </strong>
+
           </div>
 
           <div className="manager-summary-card active-summary">
-            <small>ACTIVE</small>
+
+            <small>
+              ACTIVE
+            </small>
 
             <strong>
               {
@@ -178,19 +383,25 @@ function ManagerList() {
                 ).length
               }
             </strong>
+
           </div>
 
           <div className="manager-summary-card inactive-summary">
-            <small>INACTIVE</small>
+
+            <small>
+              INACTIVE
+            </small>
 
             <strong>
               {
                 myManagers.filter(
                   (manager) =>
-                    manager.status === "INACTIVE"
+                    manager.status ===
+                    "INACTIVE"
                 ).length
               }
             </strong>
+
           </div>
 
         </section>
@@ -200,11 +411,13 @@ function ManagerList() {
         <section className="manager-search-section">
 
           <div>
-            <h2>Managers</h2>
+            <h2>
+              Managers
+            </h2>
 
             <p>
-              Name, Manager ID, Mobile किंवा Email ने
-              search करा.
+              Name, Manager ID, Mobile किंवा
+              Email ने search करा.
             </p>
           </div>
 
@@ -227,15 +440,17 @@ function ManagerList() {
 
             <div className="manager-empty-state">
 
-              <div>👥</div>
+              <div>
+                👥
+              </div>
 
               <h3>
                 Manager सापडला नाही
               </h3>
 
               <p>
-                नवीन Manager तयार करण्यासाठी Add
-                Manager वापरा.
+                नवीन Manager तयार करण्यासाठी
+                Add Manager वापरा.
               </p>
 
             </div>
@@ -247,6 +462,7 @@ function ManagerList() {
               <table className="manager-data-table">
 
                 <thead>
+
                   <tr>
                     <th>SR.</th>
                     <th>MANAGER</th>
@@ -256,6 +472,7 @@ function ManagerList() {
                     <th>STATUS</th>
                     <th>ACTION</th>
                   </tr>
+
                 </thead>
 
                 <tbody>
@@ -288,9 +505,11 @@ function ManagerList() {
                         </td>
 
                         <td>
+
                           <span className="manager-id-badge">
                             {manager.managerId}
                           </span>
+
                         </td>
 
                         <td>
@@ -306,12 +525,15 @@ function ManagerList() {
                           <button
                             type="button"
                             className={
-                              manager.status === "ACTIVE"
+                              manager.status ===
+                              "ACTIVE"
                                 ? "manager-status active"
                                 : "manager-status inactive"
                             }
                             onClick={() =>
-                              toggleStatus(manager.id)
+                              toggleStatus(
+                                manager.id
+                              )
                             }
                           >
                             {manager.status}
@@ -324,20 +546,22 @@ function ManagerList() {
                           <div className="manager-action-buttons">
 
                             <button
+                              type="button"
                               className="manager-edit-button"
                               onClick={() =>
-                                setEditingManager({
-                                  ...manager,
-                                })
+                                openEdit(manager)
                               }
                             >
                               EDIT
                             </button>
 
                             <button
+                              type="button"
                               className="manager-delete-button"
                               onClick={() =>
-                                handleDelete(manager.id)
+                                handleDelete(
+                                  manager.id
+                                )
                               }
                             >
                               DELETE
@@ -364,7 +588,9 @@ function ManagerList() {
 
       </main>
 
-      {/* EDIT MODAL */}
+      {/* =========================
+          EDIT MODAL
+      ========================= */}
 
       {editingManager && (
 
@@ -375,6 +601,7 @@ function ManagerList() {
             <div className="manager-modal-header">
 
               <div>
+
                 <small>
                   EDIT MANAGER
                 </small>
@@ -382,9 +609,11 @@ function ManagerList() {
                 <h2>
                   {editingManager.managerName}
                 </h2>
+
               </div>
 
               <button
+                type="button"
                 onClick={() =>
                   setEditingManager(null)
                 }
@@ -395,6 +624,8 @@ function ManagerList() {
             </div>
 
             <form onSubmit={handleEditSave}>
+
+              {/* NAME */}
 
               <div className="manager-edit-field">
 
@@ -419,6 +650,8 @@ function ManagerList() {
 
               </div>
 
+              {/* MANAGER ID */}
+
               <div className="manager-edit-field">
 
                 <label>
@@ -441,6 +674,8 @@ function ManagerList() {
                 />
 
               </div>
+
+              {/* MOBILE */}
 
               <div className="manager-edit-field">
 
@@ -466,6 +701,8 @@ function ManagerList() {
 
               </div>
 
+              {/* EMAIL */}
+
               <div className="manager-edit-field">
 
                 <label>
@@ -488,6 +725,8 @@ function ManagerList() {
                 />
 
               </div>
+
+              {/* ACTIONS */}
 
               <div className="manager-modal-actions">
 

@@ -1,10 +1,12 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../auth/useAuth";
 import "../../styles/forms.css";
 import "../../styles/tables.css";
 
 function CustomerId() {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const frontCameraRef = useRef(null);
   const frontGalleryRef = useRef(null);
@@ -23,34 +25,29 @@ function CustomerId() {
 
   const [message, setMessage] = useState("");
 
-  // Temporary dummy records
- const [records, setRecords] = useState(() => {
-  const savedRecords = localStorage.getItem("customerRecords");
+  // Customer records from localStorage
+  const [records, setRecords] = useState(() => {
+    const savedRecords =
+      JSON.parse(
+        localStorage.getItem("customerRecords")
+      ) || [];
 
-  if (savedRecords) {
-    return JSON.parse(savedRecords);
-  }
+    return savedRecords;
+  });
 
-  const initialRecords = [
-    {
-      id: 1,
-      date: "2026-09-15",
-      status: "VERIFIED",
-    },
-    {
-      id: 2,
-      date: "2026-09-14",
-      status: "PENDING",
-    },
-  ];
+  // =====================================
+  // ONLY LOGGED-IN MANAGER'S RECORDS
+  // =====================================
 
-  localStorage.setItem(
-    "customerRecords",
-    JSON.stringify(initialRecords)
+  const myRecords = records.filter(
+    (record) =>
+      record.managerId === user?.managerId
   );
 
-  return initialRecords;
-});
+  // =====================================
+  // PHOTO SELECT
+  // =====================================
+
   const handlePhoto = (event, side) => {
     const file = event.target.files?.[0];
 
@@ -61,7 +58,8 @@ function CustomerId() {
       return;
     }
 
-    const previewUrl = URL.createObjectURL(file);
+    const previewUrl =
+      URL.createObjectURL(file);
 
     if (side === "front") {
       if (frontPreview) {
@@ -84,6 +82,10 @@ function CustomerId() {
     setMessage("");
   };
 
+  // =====================================
+  // REMOVE FRONT PHOTO
+  // =====================================
+
   const removeFrontPhoto = () => {
     if (frontPreview) {
       URL.revokeObjectURL(frontPreview);
@@ -91,7 +93,19 @@ function CustomerId() {
 
     setFrontPhoto(null);
     setFrontPreview(null);
+
+    if (frontCameraRef.current) {
+      frontCameraRef.current.value = "";
+    }
+
+    if (frontGalleryRef.current) {
+      frontGalleryRef.current.value = "";
+    }
   };
+
+  // =====================================
+  // REMOVE BACK PHOTO
+  // =====================================
 
   const removeBackPhoto = () => {
     if (backPreview) {
@@ -100,10 +114,34 @@ function CustomerId() {
 
     setBackPhoto(null);
     setBackPreview(null);
+
+    if (backCameraRef.current) {
+      backCameraRef.current.value = "";
+    }
+
+    if (backGalleryRef.current) {
+      backGalleryRef.current.value = "";
+    }
   };
+
+  // =====================================
+  // UPLOAD
+  // =====================================
 
   const handleUpload = (event) => {
     event.preventDefault();
+
+    // Manager login check
+    if (
+      !user ||
+      user.role !== "MANAGER" ||
+      !user.managerId
+    ) {
+      setMessage(
+        "Manager login माहिती मिळाली नाही. कृपया पुन्हा login करा."
+      );
+      return;
+    }
 
     if (!date) {
       setMessage("कृपया तारीख निवडा.");
@@ -111,86 +149,181 @@ function CustomerId() {
     }
 
     if (!frontPhoto) {
-      setMessage("कृपया ID ची समोरील बाजू निवडा.");
+      setMessage(
+        "कृपया ID ची समोरील बाजू निवडा."
+      );
       return;
     }
 
     if (!backPhoto) {
-      setMessage("कृपया ID ची मागील बाजू निवडा.");
+      setMessage(
+        "कृपया ID ची मागील बाजू निवडा."
+      );
       return;
     }
 
-    // Temporary frontend-only record
+    // =====================================
+    // FRONTEND TEST RECORD
+    // =====================================
+
     const newRecord = {
       id: Date.now(),
+
       date,
+
+      // Logged-in Manager
+      managerId: user.managerId,
+
+      // Manager belongs to this Sub Admin
+      subAdminId: user.subAdminId,
+
       status: "PENDING",
+
+      createdAt: new Date().toISOString(),
     };
 
     const updatedRecords = [
-  newRecord,
-  ...records,
-];
+      newRecord,
+      ...records,
+    ];
 
-setRecords(updatedRecords);
+    setRecords(updatedRecords);
 
-localStorage.setItem(
-  "customerRecords",
-  JSON.stringify(updatedRecords)
-);
+    localStorage.setItem(
+      "customerRecords",
+      JSON.stringify(updatedRecords)
+    );
 
-    setMessage("Customer ID फोटो यशस्वीरीत्या जोडले.");
+    setMessage(
+      "Customer ID फोटो यशस्वीरीत्या जोडले."
+    );
 
     removeFrontPhoto();
     removeBackPhoto();
 
     /*
-      BACKEND आल्यावर इथे:
+      ====================================
+      SPRING BOOT + R2 नंतर
+      ====================================
 
       const formData = new FormData();
 
       formData.append("date", date);
-      formData.append("frontPhoto", frontPhoto);
-      formData.append("backPhoto", backPhoto);
+      formData.append(
+        "frontPhoto",
+        frontPhoto
+      );
 
-      await managerApi.uploadCustomerId(formData);
+      formData.append(
+        "backPhoto",
+        backPhoto
+      );
+
+      await managerApi.uploadCustomerId(
+        formData
+      );
+
+      managerId आणि subAdminId frontend कडून
+      trust करायचे नाहीत.
+
+      Backend JWT मधून logged-in Manager
+      शोधून हे IDs automatically ठरवेल.
     */
   };
 
   return (
     <div className="customer-page">
 
-      {/* HEADER */}
+      {/* =========================
+          HEADER
+      ========================= */}
 
       <header className="customer-header">
+
         <div>
-          <h2>Customer ID Management</h2>
-          <p>ग्राहकाचे ID फोटो Upload, Verify आणि Edit करा</p>
+
+          <h2>
+            Customer ID Management
+          </h2>
+
+          <p>
+            ग्राहकाचे ID फोटो Upload, Verify आणि
+            Edit करा
+          </p>
+
         </div>
 
         <button
+          type="button"
           className="back-dashboard-button"
-          onClick={() => navigate("/manager/dashboard")}
+          onClick={() =>
+            navigate("/manager/dashboard")
+          }
         >
           ← BACK TO DASHBOARD
         </button>
+
       </header>
 
       <main className="customer-container">
 
-        {/* UPLOAD SECTION */}
+        {/* =========================
+            MANAGER INFO
+        ========================= */}
+
+        <section className="customer-manager-info">
+
+          <div>
+
+            <small>
+              LOGGED IN MANAGER
+            </small>
+
+            <strong>
+              {user?.name || "Manager"}
+            </strong>
+
+          </div>
+
+          <div className="customer-manager-badges">
+
+            <span>
+              {user?.managerId || "-"}
+            </span>
+
+            <span>
+              {user?.subAdminId || "-"}
+            </span>
+
+          </div>
+
+        </section>
+
+        {/* =========================
+            UPLOAD SECTION
+        ========================= */}
 
         <section className="customer-panel">
 
           <div className="panel-title">
-            <div className="step-number">1</div>
+
+            <div className="step-number">
+              1
+            </div>
 
             <div>
-              <h2>ग्राहक ID फोटो अपलोड करा</h2>
+
+              <h2>
+                ग्राहक ID फोटो अपलोड करा
+              </h2>
+
               <p>
-                समोरील आणि मागील बाजूचे स्पष्ट फोटो निवडा.
+                समोरील आणि मागील बाजूचे स्पष्ट
+                फोटो निवडा.
               </p>
+
             </div>
+
           </div>
 
           <form onSubmit={handleUpload}>
@@ -198,7 +331,10 @@ localStorage.setItem(
             {/* DATE */}
 
             <div className="customer-form-group">
-              <label>तारीख</label>
+
+              <label>
+                तारीख
+              </label>
 
               <input
                 type="date"
@@ -207,25 +343,42 @@ localStorage.setItem(
                   setDate(event.target.value)
                 }
               />
+
             </div>
 
             <div className="section-divider" />
 
-            {/* PHOTOS */}
+            {/* PHOTO TITLE */}
 
             <div className="photo-section-title">
-              <span className="step-number">2</span>
-              <h3>फोटो अपलोड</h3>
+
+              <span className="step-number">
+                2
+              </span>
+
+              <h3>
+                फोटो अपलोड
+              </h3>
+
             </div>
+
+            {/* =========================
+                PHOTO GRID
+            ========================= */}
 
             <div className="photo-upload-grid">
 
-              {/* FRONT */}
+              {/* =====================
+                  FRONT PHOTO
+              ===================== */}
 
               <div className="photo-upload-card">
 
                 <div className="photo-card-heading">
-                  <h3>समोरील बाजू</h3>
+
+                  <h3>
+                    समोरील बाजू
+                  </h3>
 
                   <span
                     className={
@@ -234,12 +387,17 @@ localStorage.setItem(
                         : "photo-status"
                     }
                   >
-                    {frontPhoto ? "SELECTED" : "PENDING"}
+                    {frontPhoto
+                      ? "SELECTED"
+                      : "PENDING"}
                   </span>
+
                 </div>
 
                 {frontPreview ? (
+
                   <div className="photo-preview">
+
                     <img
                       src={frontPreview}
                       alt="Front ID Preview"
@@ -252,12 +410,23 @@ localStorage.setItem(
                     >
                       ×
                     </button>
+
                   </div>
+
                 ) : (
+
                   <div className="photo-placeholder">
-                    <div className="placeholder-icon">🪪</div>
-                    <p>समोरील बाजूचा फोटो निवडा</p>
+
+                    <div className="placeholder-icon">
+                      🪪
+                    </div>
+
+                    <p>
+                      समोरील बाजूचा फोटो निवडा
+                    </p>
+
                   </div>
+
                 )}
 
                 <div className="photo-buttons">
@@ -284,7 +453,7 @@ localStorage.setItem(
 
                 </div>
 
-                {/* Mobile camera */}
+                {/* MOBILE CAMERA */}
 
                 <input
                   ref={frontCameraRef}
@@ -293,11 +462,14 @@ localStorage.setItem(
                   capture="environment"
                   hidden
                   onChange={(event) =>
-                    handlePhoto(event, "front")
+                    handlePhoto(
+                      event,
+                      "front"
+                    )
                   }
                 />
 
-                {/* Gallery */}
+                {/* GALLERY */}
 
                 <input
                   ref={frontGalleryRef}
@@ -305,18 +477,26 @@ localStorage.setItem(
                   accept="image/*"
                   hidden
                   onChange={(event) =>
-                    handlePhoto(event, "front")
+                    handlePhoto(
+                      event,
+                      "front"
+                    )
                   }
                 />
 
               </div>
 
-              {/* BACK */}
+              {/* =====================
+                  BACK PHOTO
+              ===================== */}
 
               <div className="photo-upload-card">
 
                 <div className="photo-card-heading">
-                  <h3>मागील बाजू</h3>
+
+                  <h3>
+                    मागील बाजू
+                  </h3>
 
                   <span
                     className={
@@ -325,12 +505,17 @@ localStorage.setItem(
                         : "photo-status"
                     }
                   >
-                    {backPhoto ? "SELECTED" : "PENDING"}
+                    {backPhoto
+                      ? "SELECTED"
+                      : "PENDING"}
                   </span>
+
                 </div>
 
                 {backPreview ? (
+
                   <div className="photo-preview">
+
                     <img
                       src={backPreview}
                       alt="Back ID Preview"
@@ -343,12 +528,23 @@ localStorage.setItem(
                     >
                       ×
                     </button>
+
                   </div>
+
                 ) : (
+
                   <div className="photo-placeholder">
-                    <div className="placeholder-icon">🪪</div>
-                    <p>मागील बाजूचा फोटो निवडा</p>
+
+                    <div className="placeholder-icon">
+                      🪪
+                    </div>
+
+                    <p>
+                      मागील बाजूचा फोटो निवडा
+                    </p>
+
                   </div>
+
                 )}
 
                 <div className="photo-buttons">
@@ -375,6 +571,8 @@ localStorage.setItem(
 
                 </div>
 
+                {/* MOBILE CAMERA */}
+
                 <input
                   ref={backCameraRef}
                   type="file"
@@ -382,9 +580,14 @@ localStorage.setItem(
                   capture="environment"
                   hidden
                   onChange={(event) =>
-                    handlePhoto(event, "back")
+                    handlePhoto(
+                      event,
+                      "back"
+                    )
                   }
                 />
+
+                {/* GALLERY */}
 
                 <input
                   ref={backGalleryRef}
@@ -392,7 +595,10 @@ localStorage.setItem(
                   accept="image/*"
                   hidden
                   onChange={(event) =>
-                    handlePhoto(event, "back")
+                    handlePhoto(
+                      event,
+                      "back"
+                    )
                   }
                 />
 
@@ -400,11 +606,15 @@ localStorage.setItem(
 
             </div>
 
+            {/* MESSAGE */}
+
             {message && (
               <div className="customer-message">
                 {message}
               </div>
             )}
+
+            {/* UPLOAD */}
 
             <button
               type="submit"
@@ -417,92 +627,163 @@ localStorage.setItem(
 
         </section>
 
-        {/* PREVIOUS RECORDS */}
+        {/* =========================
+            PREVIOUS RECORDS
+        ========================= */}
 
         <section className="records-panel">
 
           <div className="records-heading">
+
             <div>
-              <h2>ग्राहक नोंद तपासणी</h2>
+
+              <h2>
+                ग्राहक नोंद तपासणी
+              </h2>
+
               <p>
-                आधी Upload केलेले Customer ID records
+                या Manager ने आधी Upload केलेले
+                Customer ID records
               </p>
+
             </div>
 
             <div className="record-count">
-              {records.length}
+              {myRecords.length}
             </div>
+
           </div>
 
-          <div className="records-table-wrapper">
+          {/* EMPTY STATE */}
 
-            <table className="records-table">
+          {myRecords.length === 0 ? (
 
-              <thead>
-                <tr>
-                  <th>SR.</th>
-                  <th>DATE</th>
-                  <th>FRONT</th>
-                  <th>BACK</th>
-                  <th>STATUS</th>
-                  <th>ACTION</th>
-                </tr>
-              </thead>
+            <div className="customer-empty-records">
 
-              <tbody>
+              <div>
+                🪪
+              </div>
 
-                {records.map((record, index) => (
-                  <tr key={record.id}>
+              <h3>
+                Customer ID Record नाही
+              </h3>
 
-                    <td>{index + 1}</td>
+              <p>
+                Front आणि Back फोटो Upload केल्यानंतर
+                record येथे दिसेल.
+              </p>
 
-                    <td>{record.date}</td>
+            </div>
 
-                    <td>
-                      <button className="view-front-button">
-                        फोटो पहा
-                      </button>
-                    </td>
+          ) : (
 
-                    <td>
-                      <button className="view-back-button">
-                        फोटो पहा
-                      </button>
-                    </td>
+            <div className="records-table-wrapper">
 
-                    <td>
-                      <span
-                        className={
-                          record.status === "VERIFIED"
-                            ? "record-status verified"
-                            : "record-status pending"
-                        }
-                      >
-                        {record.status}
-                      </span>
-                    </td>
+              <table className="records-table">
 
-                    <td>
-                      <button
-                        className="verify-edit-button"
-                        onClick={() =>
-                          navigate(
-                            `/manager/verify-edit/${record.id}`
-                          )
-                        }
-                      >
-                        VERIFY / EDIT
-                      </button>
-                    </td>
+                <thead>
 
+                  <tr>
+                    <th>SR.</th>
+                    <th>DATE</th>
+                    <th>FRONT</th>
+                    <th>BACK</th>
+                    <th>STATUS</th>
+                    <th>ACTION</th>
                   </tr>
-                ))}
 
-              </tbody>
+                </thead>
 
-            </table>
+                <tbody>
 
-          </div>
+                  {myRecords.map(
+                    (record, index) => (
+
+                      <tr key={record.id}>
+
+                        <td>
+                          {index + 1}
+                        </td>
+
+                        <td>
+                          {record.date}
+                        </td>
+
+                        <td>
+
+                          <button
+                            type="button"
+                            className="view-front-button"
+                            onClick={() =>
+                              window.alert(
+                                "Actual Front Photo Spring Boot + R2 जोडल्यानंतर दिसेल."
+                              )
+                            }
+                          >
+                            फोटो पहा
+                          </button>
+
+                        </td>
+
+                        <td>
+
+                          <button
+                            type="button"
+                            className="view-back-button"
+                            onClick={() =>
+                              window.alert(
+                                "Actual Back Photo Spring Boot + R2 जोडल्यानंतर दिसेल."
+                              )
+                            }
+                          >
+                            फोटो पहा
+                          </button>
+
+                        </td>
+
+                        <td>
+
+                          <span
+                            className={
+                              record.status ===
+                              "VERIFIED"
+                                ? "record-status verified"
+                                : "record-status pending"
+                            }
+                          >
+                            {record.status}
+                          </span>
+
+                        </td>
+
+                        <td>
+
+                          <button
+                            type="button"
+                            className="verify-edit-button"
+                            onClick={() =>
+                              navigate(
+                                `/manager/verify-edit/${record.id}`
+                              )
+                            }
+                          >
+                            VERIFY / EDIT
+                          </button>
+
+                        </td>
+
+                      </tr>
+
+                    )
+                  )}
+
+                </tbody>
+
+              </table>
+
+            </div>
+
+          )}
 
         </section>
 

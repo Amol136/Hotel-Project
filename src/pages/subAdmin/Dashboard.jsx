@@ -1,8 +1,15 @@
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../auth/useAuth";
 import "../../styles/dashboard.css";
 
 function SubAdminDashboard() {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login", { replace: true });
+  };
 
   const cards = [
     {
@@ -51,9 +58,9 @@ function SubAdminDashboard() {
     <div className="sub-admin-page">
 
       {/* NAVBAR */}
-
       <nav className="sub-admin-navbar">
 
+        {/* LEFT SIDE */}
         <div className="sub-admin-brand">
 
           <div className="sub-admin-logo">
@@ -67,29 +74,35 @@ function SubAdminDashboard() {
 
         </div>
 
+        {/* RIGHT SIDE */}
         <div className="sub-admin-nav-right">
 
-          <div className="sub-admin-role">
-            SUB ADMIN
+          <div>
+            <div className="sub-admin-role">
+              SUB ADMIN
+            </div>
+
+            <div className="sub-admin-user-name">
+              {user?.name || "Sub Admin"}
+            </div>
           </div>
 
           <button
+            type="button"
             className="sub-admin-logout"
-            onClick={() => navigate("/login")}
+            onClick={handleLogout}
           >
-            EXIT SYSTEM →
+            LOGOUT →
           </button>
 
         </div>
 
       </nav>
 
-      {/* MAIN */}
-
+      {/* MAIN CONTENT */}
       <main className="sub-admin-container">
 
         {/* HEADING */}
-
         <section className="sub-admin-heading">
 
           <div className="sub-heading-line">
@@ -107,12 +120,10 @@ function SubAdminDashboard() {
 
         </section>
 
-        {/* CARDS */}
-
+        {/* DASHBOARD CARDS */}
         <section className="sub-admin-grid">
 
           {cards.map((card) => (
-
             <div
               key={card.id}
               className={`sub-dashboard-card ${card.className}`}
@@ -139,13 +150,11 @@ function SubAdminDashboard() {
               </button>
 
             </div>
-
           ))}
 
         </section>
 
-        {/* BOTTOM */}
-
+        {/* FOOTER STATUS */}
         <section className="sub-admin-footer-status">
 
           <div>

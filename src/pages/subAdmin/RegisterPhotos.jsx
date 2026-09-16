@@ -1,58 +1,125 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../auth/useAuth";
 import "../../styles/tables.css";
 
 function RegisterPhotos() {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
-  // Temporary - backend/JWT नंतर काढणार
-  const currentSubAdminId = "SUBADMIN-001";
+  // Logged-in Sub Admin
+  const currentSubAdminId = user?.subAdminId;
 
   const [search, setSearch] = useState("");
 
-  const managers =
-    JSON.parse(localStorage.getItem("managers")) || [];
+  // =====================================
+  // LOAD MANAGERS
+  // =====================================
 
-  const registerRecords =
-    JSON.parse(
-      localStorage.getItem("registerPhotoRecords")
-    ) || [];
+  const managers = useMemo(() => {
+    return (
+      JSON.parse(
+        localStorage.getItem("managers")
+      ) || []
+    );
+  }, []);
 
-  // फक्त या Sub Admin चे Managers
-  const myManagers = managers.filter(
-    (manager) =>
-      manager.createdBySubAdminId === currentSubAdminId
-  );
+  // =====================================
+  // LOAD REGISTER RECORDS
+  // =====================================
 
-  const myManagerIds = myManagers.map(
-    (manager) => manager.managerId
-  );
+  const registerRecords = useMemo(() => {
+    return (
+      JSON.parse(
+        localStorage.getItem(
+          "registerPhotoRecords"
+        )
+      ) || []
+    );
+  }, []);
 
-  // जुने frontend records managerId शिवाय असतील
-  // म्हणून temporary fallback
-  const recordsWithManager = registerRecords.map(
-    (record) => ({
-      ...record,
-      managerId:
-        record.managerId ||
-        myManagers[0]?.managerId ||
-        "MGR-001",
-    })
-  );
+  // =====================================
+  // ONLY THIS SUB ADMIN'S MANAGERS
+  // =====================================
+
+  const myManagers = useMemo(() => {
+    if (!currentSubAdminId) {
+      return [];
+    }
+
+    return managers.filter(
+      (manager) =>
+        manager.createdBySubAdminId ===
+        currentSubAdminId
+    );
+  }, [managers, currentSubAdminId]);
+
+  // =====================================
+  // MANAGER IDS
+  // =====================================
+
+  const myManagerIds = useMemo(() => {
+    return myManagers.map(
+      (manager) => manager.managerId
+    );
+  }, [myManagers]);
+
+  // =====================================
+  // ONLY THIS SUB ADMIN'S
+  // REGISTER RECORDS
+  // =====================================
+
+  const myRecords = useMemo(() => {
+    if (!currentSubAdminId) {
+      return [];
+    }
+
+    return registerRecords.filter(
+      (record) => {
+        // New records:
+        // managerId + subAdminId available
+        if (record.subAdminId) {
+          return (
+            record.subAdminId ===
+              currentSubAdminId &&
+            myManagerIds.includes(
+              record.managerId
+            )
+          );
+        }
+
+        // Temporary support for older records
+        // having managerId but no subAdminId
+        if (record.managerId) {
+          return myManagerIds.includes(
+            record.managerId
+          );
+        }
+
+        // Very old records without managerId
+        // are not shown.
+        return false;
+      }
+    );
+  }, [
+    registerRecords,
+    currentSubAdminId,
+    myManagerIds,
+  ]);
+
+  // =====================================
+  // SEARCH
+  // =====================================
 
   const filteredRecords = useMemo(() => {
-    const searchText = search
-      .toLowerCase()
-      .trim();
+    const searchText =
+      search.toLowerCase().trim();
 
-    return recordsWithManager.filter((record) => {
+    return myRecords.filter((record) => {
       const manager = myManagers.find(
         (item) =>
           item.managerId === record.managerId
       );
-
-      const belongsToSubAdmin =
-        myManagerIds.includes(record.managerId);
 
       const matchesSearch =
         !searchText ||
@@ -66,25 +133,59 @@ function RegisterPhotos() {
           ?.toLowerCase()
           .includes(searchText);
 
-      return belongsToSubAdmin && matchesSearch;
+      return matchesSearch;
     });
   }, [
     search,
-    recordsWithManager,
+    myRecords,
     myManagers,
-    myManagerIds,
   ]);
+
+  // =====================================
+  // MANAGER NAME
+  // =====================================
 
   const getManagerName = (managerId) => {
     const manager = myManagers.find(
-      (item) => item.managerId === managerId
+      (item) =>
+        item.managerId === managerId
     );
 
-    return manager?.managerName || "Manager";
+    return (
+      manager?.managerName ||
+      "Manager"
+    );
   };
 
-  const handleViewPhoto = () => {
-    alert(
+  // =====================================
+  // VIEW PHOTO
+  // =====================================
+
+  const handleViewPhoto = (record) => {
+    // Extra frontend ownership check
+    if (
+      record.subAdminId &&
+      record.subAdminId !==
+        currentSubAdminId
+    ) {
+      window.alert(
+        "या Register Photo वर तुम्हाला access नाही."
+      );
+      return;
+    }
+
+    if (
+      !myManagerIds.includes(
+        record.managerId
+      )
+    ) {
+      window.alert(
+        "हा Manager तुमच्या account अंतर्गत नाही."
+      );
+      return;
+    }
+
+    window.alert(
       "Actual Register Photo Spring Boot + Cloudflare R2 जोडल्यानंतर येथे उघडेल."
     );
   };
@@ -92,26 +193,35 @@ function RegisterPhotos() {
   return (
     <div className="register-admin-page">
 
-      {/* HEADER */}
+      {/* =========================
+          HEADER
+      ========================= */}
 
       <header className="register-admin-header">
 
         <div>
+
           <span>
             SUB ADMIN / REGISTER RECORDS
           </span>
 
-          <h1>Register Photos</h1>
+          <h1>
+            Register Photos
+          </h1>
 
           <p>
             तुमच्या Managers ने Upload केलेले
             Register Photos
           </p>
+
         </div>
 
         <button
+          type="button"
           onClick={() =>
-            navigate("/sub-admin/dashboard")
+            navigate(
+              "/sub-admin/dashboard"
+            )
           }
         >
           ← DASHBOARD
@@ -121,7 +231,33 @@ function RegisterPhotos() {
 
       <main className="register-admin-container">
 
-        {/* SUMMARY */}
+        {/* =========================
+            LOGGED-IN SUB ADMIN
+        ========================= */}
+
+        <section className="register-sub-admin-info">
+
+          <div>
+
+            <small>
+              LOGGED IN SUB ADMIN
+            </small>
+
+            <strong>
+              {user?.name || "Sub Admin"}
+            </strong>
+
+          </div>
+
+          <span>
+            {currentSubAdminId || "-"}
+          </span>
+
+        </section>
+
+        {/* =========================
+            SUMMARY
+        ========================= */}
 
         <section className="register-summary">
 
@@ -132,7 +268,7 @@ function RegisterPhotos() {
             </small>
 
             <strong>
-              {filteredRecords.length}
+              {myRecords.length}
             </strong>
 
           </div>
@@ -151,17 +287,23 @@ function RegisterPhotos() {
 
         </section>
 
-        {/* TITLE + SEARCH */}
+        {/* =========================
+            TITLE + SEARCH
+        ========================= */}
 
         <section className="register-admin-toolbar">
 
           <div>
-            <h2>Register Records</h2>
+
+            <h2>
+              Register Records
+            </h2>
 
             <p>
               Manager Name, Manager ID किंवा
               Date ने search करा.
             </p>
+
           </div>
 
           <input
@@ -169,13 +311,17 @@ function RegisterPhotos() {
             placeholder="Search register photo..."
             value={search}
             onChange={(event) =>
-              setSearch(event.target.value)
+              setSearch(
+                event.target.value
+              )
             }
           />
 
         </section>
 
-        {/* TABLE */}
+        {/* =========================
+            TABLE
+        ========================= */}
 
         <section className="register-admin-table-card">
 
@@ -183,15 +329,18 @@ function RegisterPhotos() {
 
             <div className="register-admin-empty">
 
-              <div>📷</div>
+              <div>
+                📷
+              </div>
 
               <h3>
                 Register Photo नाही
               </h3>
 
               <p>
-                Manager ने Register Photo Upload
-                केल्यानंतर येथे record दिसेल.
+                तुमच्या Manager ने Register Photo
+                Upload केल्यानंतर येथे record
+                दिसेल.
               </p>
 
             </div>
@@ -227,9 +376,11 @@ function RegisterPhotos() {
                         </td>
 
                         <td>
+
                           <strong>
                             {record.date}
                           </strong>
+
                         </td>
 
                         <td>
@@ -237,17 +388,21 @@ function RegisterPhotos() {
                           <div className="register-manager-cell">
 
                             <div className="register-manager-avatar">
+
                               {getManagerName(
                                 record.managerId
                               )
                                 .charAt(0)
                                 .toUpperCase()}
+
                             </div>
 
                             <strong>
+
                               {getManagerName(
                                 record.managerId
                               )}
+
                             </strong>
 
                           </div>
@@ -265,9 +420,12 @@ function RegisterPhotos() {
                         <td>
 
                           <button
+                            type="button"
                             className="register-view-button"
-                            onClick={
-                              handleViewPhoto
+                            onClick={() =>
+                              handleViewPhoto(
+                                record
+                              )
                             }
                           >
                             📷 VIEW PHOTO
@@ -278,7 +436,8 @@ function RegisterPhotos() {
                         <td>
 
                           <span className="register-upload-status">
-                            UPLOADED
+                            {record.status ||
+                              "UPLOADED"}
                           </span>
 
                         </td>

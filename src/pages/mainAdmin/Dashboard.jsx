@@ -1,8 +1,16 @@
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../auth/useAuth";
+
 import "../../styles/dashboard.css";
 
 function MainAdminDashboard() {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login", { replace: true });
+  };
 
   const cards = [
     {
@@ -50,8 +58,10 @@ function MainAdminDashboard() {
   return (
     <div className="main-admin-page">
 
+      {/* NAVBAR */}
       <nav className="main-admin-navbar">
 
+        {/* LEFT SIDE */}
         <div className="main-admin-brand">
 
           <div className="main-admin-logo">
@@ -65,25 +75,37 @@ function MainAdminDashboard() {
 
         </div>
 
+        {/* RIGHT SIDE */}
         <div className="main-admin-nav-right">
 
-          <span className="main-admin-badge">
-            MAIN ADMIN
-          </span>
+          <div className="main-admin-user-info">
+
+            <span className="main-admin-badge">
+              MAIN ADMIN
+            </span>
+
+            <span className="main-admin-user-name">
+              {user?.name || "Main Admin"}
+            </span>
+
+          </div>
 
           <button
+            type="button"
             className="main-admin-logout"
-            onClick={() => navigate("/login")}
+            onClick={handleLogout}
           >
-            EXIT SYSTEM →
+            LOGOUT →
           </button>
 
         </div>
 
       </nav>
 
+      {/* MAIN */}
       <main className="main-admin-container">
 
+        {/* HEADING */}
         <section className="main-admin-heading">
 
           <span>SYSTEM CONTROL PANEL</span>
@@ -99,6 +121,7 @@ function MainAdminDashboard() {
 
         </section>
 
+        {/* CARDS */}
         <section className="main-admin-grid">
 
           {cards.map((card) => (
@@ -112,9 +135,13 @@ function MainAdminDashboard() {
                 {card.icon}
               </div>
 
-              <h2>{card.title}</h2>
+              <h2>
+                {card.title}
+              </h2>
 
-              <p>{card.description}</p>
+              <p>
+                {card.description}
+              </p>
 
               <button type="button">
                 {card.action}
@@ -125,9 +152,11 @@ function MainAdminDashboard() {
 
         </section>
 
+        {/* BOTTOM STATUS */}
         <section className="main-admin-status">
 
           <div>
+
             <span className="main-mode-badge">
               MAIN ADMIN MODE
             </span>
@@ -135,6 +164,7 @@ function MainAdminDashboard() {
             <small>
               FULL SYSTEM ACCESS
             </small>
+
           </div>
 
           <div className="main-system-online">

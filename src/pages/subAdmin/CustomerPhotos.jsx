@@ -1,55 +1,123 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../auth/useAuth";
 import "../../styles/tables.css";
 
 function CustomerPhotos() {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
-  const currentSubAdminId = "SUBADMIN-001";
+  // Logged-in Sub Admin
+  const currentSubAdminId = user?.subAdminId;
 
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [statusFilter, setStatusFilter] =
+    useState("ALL");
 
-  const managers =
-    JSON.parse(localStorage.getItem("managers")) || [];
+  // =====================================
+  // GET MANAGERS
+  // =====================================
 
-  const customerRecords =
-    JSON.parse(localStorage.getItem("customerRecords")) || [];
+  const managers = useMemo(() => {
+    return (
+      JSON.parse(
+        localStorage.getItem("managers")
+      ) || []
+    );
+  }, []);
 
-  // फक्त current Sub Admin चे managers
-  const myManagers = managers.filter(
-    (manager) =>
-      manager.createdBySubAdminId === currentSubAdminId
-  );
+  // =====================================
+  // GET CUSTOMER RECORDS
+  // =====================================
 
-  const myManagerIds = myManagers.map(
-    (manager) => manager.managerId
-  );
+  const customerRecords = useMemo(() => {
+    return (
+      JSON.parse(
+        localStorage.getItem("customerRecords")
+      ) || []
+    );
+  }, []);
 
-  // Backend येईपर्यंत जुन्या records साठी
-  // पहिला manager fallback म्हणून वापरतो.
-  const recordsWithManager = customerRecords.map(
-    (record) => ({
-      ...record,
-      managerId:
-        record.managerId ||
-        myManagers[0]?.managerId ||
-        "MGR-001",
-    })
-  );
+  // =====================================
+  // ONLY THIS SUB ADMIN'S MANAGERS
+  // =====================================
+
+  const myManagers = useMemo(() => {
+    if (!currentSubAdminId) {
+      return [];
+    }
+
+    return managers.filter(
+      (manager) =>
+        manager.createdBySubAdminId ===
+        currentSubAdminId
+    );
+  }, [managers, currentSubAdminId]);
+
+  // =====================================
+  // MANAGER IDs
+  // =====================================
+
+  const myManagerIds = useMemo(() => {
+    return myManagers.map(
+      (manager) => manager.managerId
+    );
+  }, [myManagers]);
+
+  // =====================================
+  // ONLY THIS SUB ADMIN'S RECORDS
+  // =====================================
+
+  const myRecords = useMemo(() => {
+    if (!currentSubAdminId) {
+      return [];
+    }
+
+    return customerRecords.filter(
+      (record) => {
+        // New records have direct subAdminId
+        if (record.subAdminId) {
+          return (
+            record.subAdminId ===
+              currentSubAdminId &&
+            myManagerIds.includes(
+              record.managerId
+            )
+          );
+        }
+
+        // Temporary support for older records
+        // that have managerId but no subAdminId
+        if (record.managerId) {
+          return myManagerIds.includes(
+            record.managerId
+          );
+        }
+
+        // Very old dummy records without
+        // managerId/subAdminId are not shown.
+        return false;
+      }
+    );
+  }, [
+    customerRecords,
+    currentSubAdminId,
+    myManagerIds,
+  ]);
+
+  // =====================================
+  // SEARCH + STATUS FILTER
+  // =====================================
 
   const filteredRecords = useMemo(() => {
-    return recordsWithManager.filter((record) => {
+    const searchText =
+      search.toLowerCase().trim();
+
+    return myRecords.filter((record) => {
       const manager = myManagers.find(
-        (item) => item.managerId === record.managerId
+        (item) =>
+          item.managerId === record.managerId
       );
-
-      const belongsToSubAdmin =
-        myManagerIds.includes(record.managerId);
-
-      const searchText = search
-        .toLowerCase()
-        .trim();
 
       const matchesSearch =
         !searchText ||
@@ -68,7 +136,6 @@ function CustomerPhotos() {
         record.status === statusFilter;
 
       return (
-        belongsToSubAdmin &&
         matchesSearch &&
         matchesStatus
       );
@@ -76,21 +143,46 @@ function CustomerPhotos() {
   }, [
     search,
     statusFilter,
-    recordsWithManager,
+    myRecords,
     myManagers,
-    myManagerIds,
   ]);
+
+  // =====================================
+  // MANAGER NAME
+  // =====================================
 
   const getManagerName = (managerId) => {
     const manager = myManagers.find(
-      (item) => item.managerId === managerId
+      (item) =>
+        item.managerId === managerId
     );
 
-    return manager?.managerName || "Manager";
+    return (
+      manager?.managerName ||
+      "Manager"
+    );
   };
 
-  const handleViewPhoto = (side) => {
-    alert(
+  // =====================================
+  // VIEW PHOTO
+  // =====================================
+
+  const handleViewPhoto = (
+    side,
+    record
+  ) => {
+    if (
+      record.subAdminId &&
+      record.subAdminId !==
+        currentSubAdminId
+    ) {
+      window.alert(
+        "या record वर तुम्हाला access नाही."
+      );
+      return;
+    }
+
+    window.alert(
       `${side} photo Cloudflare R2 backend जोडल्यानंतर येथे उघडेल.`
     );
   };
@@ -98,22 +190,35 @@ function CustomerPhotos() {
   return (
     <div className="sub-photo-page">
 
+      {/* =========================
+          HEADER
+      ========================= */}
+
       <header className="sub-photo-header">
 
         <div>
-          <span>SUB ADMIN / CUSTOMER RECORDS</span>
 
-          <h1>Customer ID Photos</h1>
+          <span>
+            SUB ADMIN / CUSTOMER RECORDS
+          </span>
+
+          <h1>
+            Customer ID Photos
+          </h1>
 
           <p>
             तुमच्या Managers ने Upload केलेले
             Customer ID records
           </p>
+
         </div>
 
         <button
+          type="button"
           onClick={() =>
-            navigate("/sub-admin/dashboard")
+            navigate(
+              "/sub-admin/dashboard"
+            )
           }
         >
           ← DASHBOARD
@@ -123,54 +228,103 @@ function CustomerPhotos() {
 
       <main className="sub-photo-container">
 
-        {/* SUMMARY */}
+        {/* =========================
+            LOGGED-IN SUB ADMIN
+        ========================= */}
+
+        <section className="sub-photo-admin-info">
+
+          <div>
+
+            <small>
+              LOGGED IN SUB ADMIN
+            </small>
+
+            <strong>
+              {user?.name || "Sub Admin"}
+            </strong>
+
+          </div>
+
+          <span>
+            {currentSubAdminId || "-"}
+          </span>
+
+        </section>
+
+        {/* =========================
+            SUMMARY
+        ========================= */}
 
         <section className="photo-summary-grid">
 
           <div className="photo-summary-card">
-            <small>TOTAL RECORDS</small>
+
+            <small>
+              TOTAL RECORDS
+            </small>
+
             <strong>
-              {filteredRecords.length}
+              {myRecords.length}
             </strong>
+
           </div>
 
           <div className="photo-summary-card verified">
-            <small>VERIFIED</small>
+
+            <small>
+              VERIFIED
+            </small>
 
             <strong>
               {
-                filteredRecords.filter(
+                myRecords.filter(
                   (record) =>
-                    record.status === "VERIFIED"
+                    record.status ===
+                    "VERIFIED"
                 ).length
               }
             </strong>
+
           </div>
 
           <div className="photo-summary-card pending">
-            <small>PENDING</small>
+
+            <small>
+              PENDING
+            </small>
 
             <strong>
               {
-                filteredRecords.filter(
+                myRecords.filter(
                   (record) =>
-                    record.status === "PENDING"
+                    record.status ===
+                    "PENDING"
                 ).length
               }
             </strong>
+
           </div>
 
         </section>
 
-        {/* FILTER */}
+        {/* =========================
+            FILTER
+        ========================= */}
 
         <section className="photo-filter-bar">
 
           <div>
-            <h2>Customer Records</h2>
+
+            <h2>
+              Customer Records
+            </h2>
+
             <p>
-              Manager, ID किंवा Date ने search करा
+              Manager, ID किंवा Date ने
+              search करा
             </p>
+
           </div>
 
           <div className="photo-filter-controls">
@@ -180,16 +334,21 @@ function CustomerPhotos() {
               placeholder="Search..."
               value={search}
               onChange={(event) =>
-                setSearch(event.target.value)
+                setSearch(
+                  event.target.value
+                )
               }
             />
 
             <select
               value={statusFilter}
               onChange={(event) =>
-                setStatusFilter(event.target.value)
+                setStatusFilter(
+                  event.target.value
+                )
               }
             >
+
               <option value="ALL">
                 All Status
               </option>
@@ -201,29 +360,37 @@ function CustomerPhotos() {
               <option value="PENDING">
                 Pending
               </option>
+
             </select>
 
           </div>
 
         </section>
 
-        {/* TABLE */}
+        {/* =========================
+            TABLE
+        ========================= */}
 
         <section className="sub-photo-table-card">
 
           {filteredRecords.length === 0 ? (
 
             <div className="sub-photo-empty">
-              <div>🪪</div>
+
+              <div>
+                🪪
+              </div>
 
               <h3>
                 Customer ID record नाही
               </h3>
 
               <p>
-                Manager ने Customer ID Upload
-                केल्यानंतर येथे record दिसेल.
+                तुमच्या Manager ने Customer ID
+                Upload केल्यानंतर येथे record
+                दिसेल.
               </p>
+
             </div>
 
           ) : (
@@ -233,6 +400,7 @@ function CustomerPhotos() {
               <table className="sub-photo-table">
 
                 <thead>
+
                   <tr>
                     <th>SR.</th>
                     <th>DATE</th>
@@ -242,6 +410,7 @@ function CustomerPhotos() {
                     <th>BACK PHOTO</th>
                     <th>STATUS</th>
                   </tr>
+
                 </thead>
 
                 <tbody>
@@ -251,53 +420,70 @@ function CustomerPhotos() {
 
                       <tr key={record.id}>
 
-                        <td>{index + 1}</td>
+                        <td>
+                          {index + 1}
+                        </td>
 
                         <td>
+
                           <strong>
                             {record.date}
                           </strong>
+
                         </td>
 
                         <td>
+
                           {getManagerName(
                             record.managerId
                           )}
+
                         </td>
 
                         <td>
+
                           <span className="sub-manager-id">
                             {record.managerId}
                           </span>
+
                         </td>
 
                         <td>
+
                           <button
+                            type="button"
                             className="front-photo-button"
                             onClick={() =>
                               handleViewPhoto(
-                                "Front"
+                                "Front",
+                                record
                               )
                             }
                           >
                             FRONT PHOTO
                           </button>
+
                         </td>
 
                         <td>
+
                           <button
+                            type="button"
                             className="back-photo-button"
                             onClick={() =>
                               handleViewPhoto(
-                                "Back"
+                                "Back",
+                                record
                               )
                             }
                           >
                             BACK PHOTO
                           </button>
+
                         </td>
 
                         <td>
+
                           <span
                             className={
                               record.status ===
@@ -308,6 +494,7 @@ function CustomerPhotos() {
                           >
                             {record.status}
                           </span>
+
                         </td>
 
                       </tr>
