@@ -7,9 +7,13 @@ function Dashboard() {
   const { user, logout } = useAuth();
 
   const handleLogout = () => {
-    logout();
-    navigate("/login", { replace: true });
-  };
+  logout();
+
+  navigate(
+    "/login/manager",
+    { replace: true }
+  );
+};
 
   return (
     <div className="dashboard-page">

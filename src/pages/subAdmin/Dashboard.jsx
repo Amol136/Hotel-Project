@@ -7,9 +7,13 @@ function SubAdminDashboard() {
   const { user, logout } = useAuth();
 
   const handleLogout = () => {
-    logout();
-    navigate("/login", { replace: true });
-  };
+  logout();
+
+  navigate(
+    "/login/sub-admin",
+    { replace: true }
+  );
+};
 
   const cards = [
     {

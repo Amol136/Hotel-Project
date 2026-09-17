@@ -8,9 +8,13 @@ function MainAdminDashboard() {
   const { user, logout } = useAuth();
 
   const handleLogout = () => {
-    logout();
-    navigate("/login", { replace: true });
-  };
+  logout();
+
+  navigate(
+    "/login/admin",
+    { replace: true }
+  );
+};
 
   const cards = [
     {

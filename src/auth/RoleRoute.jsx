@@ -1,13 +1,40 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "./useAuth";
 
-function RoleRoute({ children, allowedRole }) {
+function RoleRoute({
+  children,
+  allowedRole,
+}) {
   const { user } = useAuth();
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    if (allowedRole === "MANAGER") {
+      return (
+        <Navigate
+          to="/login/manager"
+          replace
+        />
+      );
+    }
+
+    if (allowedRole === "SUB_ADMIN") {
+      return (
+        <Navigate
+          to="/login/sub-admin"
+          replace
+        />
+      );
+    }
+
+    return (
+      <Navigate
+        to="/login/admin"
+        replace
+      />
+    );
   }
 
+  // Wrong role असल्यास त्याच्या स्वतःच्या dashboard वर पाठवा
   if (user.role !== allowedRole) {
     if (user.role === "MAIN_ADMIN") {
       return (
@@ -36,7 +63,12 @@ function RoleRoute({ children, allowedRole }) {
       );
     }
 
-    return <Navigate to="/login" replace />;
+    return (
+      <Navigate
+        to="/login/admin"
+        replace
+      />
+    );
   }
 
   return children;

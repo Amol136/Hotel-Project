@@ -4,15 +4,25 @@ import {
   Navigate,
 } from "react-router-dom";
 
-import Login from "./pages/auth/Login";
+// ======================
+// LOGIN
+// ======================
 
+import AdminLogin from "./pages/auth/AdminLogin";
+import SubAdminLogin from "./pages/auth/SubAdminLogin";
+import ManagerLogin from "./pages/auth/ManagerLogin";
+
+// ======================
 // AUTH
+// ======================
+
 import ProtectedRoute from "./auth/ProtectedRoute";
 import RoleRoute from "./auth/RoleRoute";
 
 // ======================
 // MANAGER
 // ======================
+
 import ManagerDashboard from "./pages/manager/Dashboard";
 import CustomerId from "./pages/manager/CustomerId";
 import VerifyEdit from "./pages/manager/VerifyEdit";
@@ -21,6 +31,7 @@ import RegisterPhoto from "./pages/manager/RegisterPhoto";
 // ======================
 // SUB ADMIN
 // ======================
+
 import SubAdminDashboard from "./pages/subAdmin/Dashboard";
 import CreateManager from "./pages/subAdmin/CreateManager";
 import ManagerList from "./pages/subAdmin/ManagerList";
@@ -30,6 +41,7 @@ import RegisterPhotos from "./pages/subAdmin/RegisterPhotos";
 // ======================
 // MAIN ADMIN
 // ======================
+
 import MainAdminDashboard from "./pages/mainAdmin/Dashboard";
 import CreateSubAdmin from "./pages/mainAdmin/CreateSubAdmin";
 import SubAdminList from "./pages/mainAdmin/SubAdminList";
@@ -41,16 +53,47 @@ function App() {
   return (
     <Routes>
 
-      {/* DEFAULT */}
+      {/* ==================================
+          DEFAULT
+      ================================== */}
+
       <Route
         path="/"
-        element={<Navigate to="/login" replace />}
+        element={
+          <Navigate
+            to="/login/admin"
+            replace
+          />
+        }
       />
 
-      {/* LOGIN */}
+      {/* ==================================
+          LOGIN ROUTES
+      ================================== */}
+
       <Route
         path="/login"
-        element={<Login />}
+        element={
+          <Navigate
+            to="/login/admin"
+            replace
+          />
+        }
+      />
+
+      <Route
+        path="/login/admin"
+        element={<AdminLogin />}
+      />
+
+      <Route
+        path="/login/sub-admin"
+        element={<SubAdminLogin />}
+      />
+
+      <Route
+        path="/login/manager"
+        element={<ManagerLogin />}
       />
 
       {/* ==================================
@@ -230,10 +273,19 @@ function App() {
         }
       />
 
-      {/* UNKNOWN URL - ALWAYS LAST */}
+      {/* ==================================
+          UNKNOWN URL
+          ALWAYS KEEP LAST
+      ================================== */}
+
       <Route
         path="*"
-        element={<Navigate to="/login" replace />}
+        element={
+          <Navigate
+            to="/login/admin"
+            replace
+          />
+        }
       />
 
     </Routes>
