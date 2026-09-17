@@ -2635,3 +2635,359 @@
   font-size: 10px;
   font-weight: 900;
 }
+/* =========================================================
+   MAIN ADMIN - ALL CUSTOMER ID PHOTOS
+   SEARCH / FILTER SECTION
+========================================================= */
+
+.customer-search-filters {
+  width: 100% !important;
+
+  display: grid !important;
+  grid-template-columns:
+    minmax(180px, 0.8fr)
+    minmax(220px, 1.2fr)
+    minmax(220px, 1.2fr)
+    minmax(150px, 0.7fr) !important;
+
+  gap: 14px !important;
+
+  align-items: end !important;
+
+  margin: 0 0 22px 0 !important;
+  padding: 18px !important;
+
+  box-sizing: border-box;
+
+  background: #ffffff;
+
+  border: 1px solid #dbe3ef;
+  border-radius: 14px;
+
+  box-shadow:
+    0 4px 15px rgba(15, 23, 42, 0.04);
+}
+
+
+/* =========================================================
+   EACH FILTER
+========================================================= */
+
+.customer-filter-field {
+  width: 100% !important;
+
+  display: flex !important;
+  flex-direction: column !important;
+
+  gap: 8px !important;
+
+  margin: 0 !important;
+  padding: 0 !important;
+
+  box-sizing: border-box;
+}
+
+
+/* =========================================================
+   FILTER LABEL
+========================================================= */
+
+.customer-filter-field label {
+  display: block !important;
+
+  margin: 0 !important;
+  padding: 0 !important;
+
+  color: #64748b;
+
+  font-size: 10px;
+  font-weight: 800;
+
+  letter-spacing: 0.7px;
+
+  line-height: 1.2;
+}
+
+
+/* =========================================================
+   INPUT + SELECT
+========================================================= */
+
+.customer-filter-field input,
+.customer-filter-field select {
+  width: 100% !important;
+  height: 48px !important;
+
+  display: block !important;
+
+  margin: 0 !important;
+
+  padding: 0 14px !important;
+
+  box-sizing: border-box !important;
+
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 10px !important;
+
+  outline: none !important;
+
+  background: #ffffff !important;
+  color: #111827 !important;
+
+  font-family: inherit !important;
+  font-size: 14px !important;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+
+/* =========================================================
+   DATE INPUT
+========================================================= */
+
+.customer-filter-field input[type="date"] {
+  cursor: pointer;
+}
+
+
+/* =========================================================
+   SELECT
+========================================================= */
+
+.customer-filter-field select {
+  cursor: pointer;
+
+  appearance: auto;
+}
+
+
+/* =========================================================
+   PLACEHOLDER
+========================================================= */
+
+.customer-filter-field input::placeholder {
+  color: #94a3b8;
+}
+
+
+/* =========================================================
+   FOCUS
+========================================================= */
+
+.customer-filter-field input:focus,
+.customer-filter-field select:focus {
+  border-color: #2563eb !important;
+
+  box-shadow:
+    0 0 0 3px rgba(37, 99, 235, 0.10) !important;
+}
+
+
+/* =========================================================
+   TOOLBAR
+========================================================= */
+
+.all-customer-toolbar {
+  width: 100%;
+
+  display: flex !important;
+
+  align-items: center !important;
+  justify-content: space-between !important;
+
+  margin-bottom: 14px !important;
+}
+
+.all-customer-toolbar h2 {
+  margin: 0 0 5px 0;
+
+  color: #111c35;
+
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.all-customer-toolbar p {
+  margin: 0;
+
+  color: #64748b;
+
+  font-size: 12px;
+}
+
+
+/* =========================================================
+   TABLE
+========================================================= */
+
+.all-customer-table-card {
+  width: 100%;
+
+  margin-top: 0 !important;
+}
+
+
+/* =========================================================
+   TABLET
+========================================================= */
+
+@media (max-width: 1000px) {
+
+  .customer-search-filters {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr)) !important;
+  }
+
+}
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 600px) {
+
+  .customer-search-filters {
+    grid-template-columns:
+      1fr !important;
+
+    padding: 14px !important;
+  }
+
+  .customer-filter-field input,
+  .customer-filter-field select {
+    height: 46px !important;
+  }
+
+}
+/* =====================================================
+   SUB ADMIN - CUSTOMER PHOTO SEARCH
+===================================================== */
+
+.sub-customer-search-area {
+  display: grid !important;
+  grid-template-columns:
+    190px
+    minmax(250px, 1fr)
+    150px !important;
+
+  gap: 12px !important;
+  align-items: end !important;
+
+  width: 100%;
+  max-width: 650px;
+
+  margin-left: auto;
+}
+
+.sub-customer-filter {
+  display: flex !important;
+  flex-direction: column !important;
+
+  gap: 7px !important;
+
+  width: 100%;
+}
+
+.sub-customer-filter label {
+  margin: 0;
+
+  color: #64748b;
+
+  font-size: 10px;
+  font-weight: 800;
+
+  letter-spacing: 0.6px;
+}
+
+.sub-customer-filter input,
+.sub-customer-filter select {
+  width: 100% !important;
+  height: 46px !important;
+
+  box-sizing: border-box !important;
+
+  margin: 0 !important;
+  padding: 0 14px !important;
+
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 10px !important;
+
+  background: #ffffff !important;
+  color: #111827 !important;
+
+  font-family: inherit !important;
+  font-size: 14px !important;
+
+  outline: none !important;
+}
+
+.sub-customer-filter input:focus,
+.sub-customer-filter select:focus {
+  border-color: #2563eb !important;
+
+  box-shadow:
+    0 0 0 3px rgba(37, 99, 235, 0.08) !important;
+}
+
+.sub-customer-filter input::placeholder {
+  color: #94a3b8;
+}
+
+
+/* FILTER HEADING + SEARCH SAME ROW */
+
+.photo-filter-bar {
+  display: flex !important;
+
+  align-items: flex-end !important;
+  justify-content: space-between !important;
+
+  gap: 25px !important;
+
+  width: 100%;
+}
+
+.photo-filter-heading {
+  flex-shrink: 0;
+}
+
+.photo-filter-heading h2 {
+  margin: 0 0 5px;
+}
+
+.photo-filter-heading p {
+  margin: 0;
+}
+
+
+/* TABLET */
+
+@media (max-width: 900px) {
+
+  .photo-filter-bar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .sub-customer-search-area {
+    max-width: 100%;
+    margin-left: 0;
+
+    grid-template-columns:
+      1fr 1fr !important;
+  }
+}
+
+
+/* MOBILE */
+
+@media (max-width: 600px) {
+
+  .sub-customer-search-area {
+    grid-template-columns:
+      1fr !important;
+  }
+}

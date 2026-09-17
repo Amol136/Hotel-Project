@@ -261,19 +261,7 @@ function CreateManager() {
 
             </div>
 
-            <div className="manager-form-group">
-
-              <label>
-                STATUS
-              </label>
-
-              <input
-                type="text"
-                value="ACTIVE"
-                disabled
-              />
-
-            </div>
+            
 
           </div>
 

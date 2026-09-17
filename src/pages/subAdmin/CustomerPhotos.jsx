@@ -7,10 +7,22 @@ function CustomerPhotos() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // Logged-in Sub Admin
+  // =====================================
+  // LOGGED-IN SUB ADMIN
+  // =====================================
+
   const currentSubAdminId = user?.subAdminId;
 
-  const [search, setSearch] = useState("");
+  // =====================================
+  // SEARCH FILTERS
+  // =====================================
+
+  const [searchDate, setSearchDate] =
+    useState("");
+
+  const [searchManager, setSearchManager] =
+    useState("");
+
   const [statusFilter, setStatusFilter] =
     useState("ALL");
 
@@ -75,7 +87,8 @@ function CustomerPhotos() {
 
     return customerRecords.filter(
       (record) => {
-        // New records have direct subAdminId
+
+        // New records
         if (record.subAdminId) {
           return (
             record.subAdminId ===
@@ -86,16 +99,13 @@ function CustomerPhotos() {
           );
         }
 
-        // Temporary support for older records
-        // that have managerId but no subAdminId
+        // Old records support
         if (record.managerId) {
           return myManagerIds.includes(
             record.managerId
           );
         }
 
-        // Very old dummy records without
-        // managerId/subAdminId are not shown.
         return false;
       }
     );
@@ -106,49 +116,63 @@ function CustomerPhotos() {
   ]);
 
   // =====================================
-  // SEARCH + STATUS FILTER
+  // DATE + MANAGER + STATUS FILTER
   // =====================================
 
   const filteredRecords = useMemo(() => {
-    const searchText =
-      search.toLowerCase().trim();
+    const dateText =
+      searchDate.toLowerCase().trim();
+
+    const managerText =
+      searchManager.toLowerCase().trim();
 
     return myRecords.filter((record) => {
+
       const manager = myManagers.find(
         (item) =>
-          item.managerId === record.managerId
+          item.managerId ===
+          record.managerId
       );
 
-      const matchesSearch =
-        !searchText ||
-        manager?.managerName
-          ?.toLowerCase()
-          .includes(searchText) ||
-        record.managerId
-          ?.toLowerCase()
-          .includes(searchText) ||
+      // SEARCH BY DATE
+      const matchesDate =
+        !dateText ||
         record.date
           ?.toLowerCase()
-          .includes(searchText);
+          .includes(dateText);
 
+      // SEARCH BY MANAGER
+      // Manager Name किंवा Manager ID
+      const matchesManager =
+        !managerText ||
+        manager?.managerName
+          ?.toLowerCase()
+          .includes(managerText) ||
+        record.managerId
+          ?.toLowerCase()
+          .includes(managerText);
+
+      // STATUS
       const matchesStatus =
         statusFilter === "ALL" ||
         record.status === statusFilter;
 
       return (
-        matchesSearch &&
+        matchesDate &&
+        matchesManager &&
         matchesStatus
       );
     });
   }, [
-    search,
+    searchDate,
+    searchManager,
     statusFilter,
     myRecords,
     myManagers,
   ]);
 
   // =====================================
-  // MANAGER NAME
+  // GET MANAGER NAME
   // =====================================
 
   const getManagerName = (managerId) => {
@@ -171,6 +195,7 @@ function CustomerPhotos() {
     side,
     record
   ) => {
+
     if (
       record.subAdminId &&
       record.subAdminId !==
@@ -179,6 +204,7 @@ function CustomerPhotos() {
       window.alert(
         "या record वर तुम्हाला access नाही."
       );
+
       return;
     }
 
@@ -258,6 +284,8 @@ function CustomerPhotos() {
 
         <section className="photo-summary-grid">
 
+          {/* TOTAL */}
+
           <div className="photo-summary-card">
 
             <small>
@@ -269,6 +297,8 @@ function CustomerPhotos() {
             </strong>
 
           </div>
+
+          {/* VERIFIED */}
 
           <div className="photo-summary-card verified">
 
@@ -287,6 +317,8 @@ function CustomerPhotos() {
             </strong>
 
           </div>
+
+          {/* PENDING */}
 
           <div className="photo-summary-card pending">
 
@@ -314,54 +346,94 @@ function CustomerPhotos() {
 
         <section className="photo-filter-bar">
 
-          <div>
+          <div className="photo-filter-heading">
 
             <h2>
               Customer Records
             </h2>
 
             <p>
-              Manager, ID किंवा Date ने
+              Date आणि Manager नुसार
               search करा
             </p>
 
           </div>
 
-          <div className="photo-filter-controls">
+          <div className="sub-customer-search-area">
 
-            <input
-              type="text"
-              placeholder="Search..."
-              value={search}
-              onChange={(event) =>
-                setSearch(
-                  event.target.value
-                )
-              }
-            />
+            {/* SEARCH BY DATE */}
 
-            <select
-              value={statusFilter}
-              onChange={(event) =>
-                setStatusFilter(
-                  event.target.value
-                )
-              }
-            >
+            <div className="sub-customer-filter">
 
-              <option value="ALL">
-                All Status
-              </option>
+              <label>
+                SEARCH BY DATE
+              </label>
 
-              <option value="VERIFIED">
-                Verified
-              </option>
+              <input
+                type="date"
+                value={searchDate}
+                onChange={(event) =>
+                  setSearchDate(
+                    event.target.value
+                  )
+                }
+              />
 
-              <option value="PENDING">
-                Pending
-              </option>
+            </div>
 
-            </select>
+            {/* SEARCH BY MANAGER */}
+
+            <div className="sub-customer-filter">
+
+              <label>
+                SEARCH BY MANAGER
+              </label>
+
+              <input
+                type="text"
+                placeholder="Manager name or ID..."
+                value={searchManager}
+                onChange={(event) =>
+                  setSearchManager(
+                    event.target.value
+                  )
+                }
+              />
+
+            </div>
+
+            {/* STATUS */}
+
+            <div className="sub-customer-filter">
+
+              <label>
+                STATUS
+              </label>
+
+              <select
+                value={statusFilter}
+                onChange={(event) =>
+                  setStatusFilter(
+                    event.target.value
+                  )
+                }
+              >
+
+                <option value="ALL">
+                  All Status
+                </option>
+
+                <option value="VERIFIED">
+                  Verified
+                </option>
+
+                <option value="PENDING">
+                  Pending
+                </option>
+
+              </select>
+
+            </div>
 
           </div>
 
@@ -402,13 +474,21 @@ function CustomerPhotos() {
                 <thead>
 
                   <tr>
+
                     <th>SR.</th>
+
                     <th>DATE</th>
+
                     <th>MANAGER</th>
+
                     <th>MANAGER ID</th>
+
                     <th>FRONT PHOTO</th>
+
                     <th>BACK PHOTO</th>
+
                     <th>STATUS</th>
+
                   </tr>
 
                 </thead>
@@ -420,9 +500,13 @@ function CustomerPhotos() {
 
                       <tr key={record.id}>
 
+                        {/* SR */}
+
                         <td>
                           {index + 1}
                         </td>
+
+                        {/* DATE */}
 
                         <td>
 
@@ -432,6 +516,8 @@ function CustomerPhotos() {
 
                         </td>
 
+                        {/* MANAGER */}
+
                         <td>
 
                           {getManagerName(
@@ -440,13 +526,19 @@ function CustomerPhotos() {
 
                         </td>
 
+                        {/* MANAGER ID */}
+
                         <td>
 
                           <span className="sub-manager-id">
+
                             {record.managerId}
+
                           </span>
 
                         </td>
+
+                        {/* FRONT PHOTO */}
 
                         <td>
 
@@ -465,6 +557,8 @@ function CustomerPhotos() {
 
                         </td>
 
+                        {/* BACK PHOTO */}
+
                         <td>
 
                           <button
@@ -482,6 +576,8 @@ function CustomerPhotos() {
 
                         </td>
 
+                        {/* STATUS */}
+
                         <td>
 
                           <span
@@ -492,7 +588,9 @@ function CustomerPhotos() {
                                 : "sub-record-status pending"
                             }
                           >
+
                             {record.status}
+
                           </span>
 
                         </td>

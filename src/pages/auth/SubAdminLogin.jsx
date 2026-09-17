@@ -7,45 +7,36 @@ function SubAdminLogin() {
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  const [subAdminId, setSubAdminId] =
-    useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
 
-  const [password, setPassword] =
-    useState("");
-
-  const [error, setError] =
-    useState("");
-
-  const handleSubmit = (event) => {
-    event.preventDefault();
+  const handleSubmit = (e) => {
+    e.preventDefault();
     setError("");
 
     const subAdmins =
-      JSON.parse(
-        localStorage.getItem("subAdmins")
-      ) || [];
-
-    const enteredId =
-      subAdminId.trim().toUpperCase();
+      JSON.parse(localStorage.getItem("subAdmins")) || [];
 
     const subAdmin = subAdmins.find(
       (item) =>
-        item.subAdminId?.toUpperCase() ===
-          enteredId &&
-        item.password === password
+        item.email?.trim().toLowerCase() ===
+        email.trim().toLowerCase()
     );
 
     if (!subAdmin) {
-      setError(
-        "Sub Admin ID किंवा Password चुकीचा आहे."
-      );
+      setError("Invalid Email ID or Password.");
       return;
     }
 
     if (subAdmin.status === "INACTIVE") {
-      setError(
-        "हा Sub Admin account Inactive आहे."
-      );
+      setError("Your account is inactive.");
+      return;
+    }
+
+    if (subAdmin.password !== password) {
+      setError("Invalid Email ID or Password.");
       return;
     }
 
@@ -53,112 +44,70 @@ function SubAdminLogin() {
       id: subAdmin.id,
       subAdminId: subAdmin.subAdminId,
       name: subAdmin.name,
+      email: subAdmin.email,
       propertyName: subAdmin.propertyName,
       role: "SUB_ADMIN",
     });
 
-    navigate(
-      "/sub-admin/dashboard",
-      { replace: true }
-    );
+    navigate("/sub-admin/dashboard", { replace: true });
   };
 
   return (
     <div className="role-login-page">
-
       <div className="role-login-card">
-
-        <div className="role-login-badge">
-          SUB ADMIN
-        </div>
+        <div className="role-login-badge">SUB ADMIN</div>
 
         <h1>SUB ADMIN LOGIN</h1>
-
-        <p>
-          Manager आणि Photo Records manage करा
-        </p>
+        <p>Enter your Email ID and Password.</p>
 
         <form onSubmit={handleSubmit}>
-
           <div className="role-login-group">
-
-            <label>
-              SUB ADMIN ID
-            </label>
-
+            <label>EMAIL ID</label>
             <input
-              type="text"
-              placeholder="Enter Sub Admin ID"
-              value={subAdminId}
-              onChange={(e) =>
-                setSubAdminId(
-                  e.target.value
-                )
-              }
-              autoComplete="username"
+              type="email"
+              placeholder="Enter Email ID"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              required
             />
-
           </div>
 
           <div className="role-login-group">
+            <label>PASSWORD</label>
 
-            <label>
-              PASSWORD
-            </label>
+            <div className="password-input-wrapper">
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Enter Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                required
+              />
 
-            <input
-              type="password"
-              placeholder="Enter Password"
-              value={password}
-              onChange={(e) =>
-                setPassword(
-                  e.target.value
-                )
-              }
-              autoComplete="current-password"
-            />
-
+              <button
+                type="button"
+                className="password-eye-btn"
+                onClick={() => setShowPassword((prev) => !prev)}
+                aria-label={
+                  showPassword ? "Hide password" : "Show password"
+                }
+              >
+                {showPassword ? "🙈" : "👁"}
+              </button>
+            </div>
           </div>
 
           {error && (
-            <div className="role-login-error">
-              {error}
-            </div>
+            <div className="role-login-error">{error}</div>
           )}
 
-          <button
-            type="submit"
-            className="role-login-submit"
-          >
+          <button type="submit" className="role-login-submit">
             SUB ADMIN LOGIN →
           </button>
-
         </form>
-
-        <div className="role-login-switch">
-
-          <button
-            type="button"
-            onClick={() =>
-              navigate("/login/admin")
-            }
-          >
-            Admin Login
-          </button>
-
-          <button
-            type="button"
-            onClick={() =>
-              navigate("/login/manager")
-            }
-          >
-            Manager Login
-          </button>
-
-        </div>
-
       </div>
-
     </div>
   );
 }

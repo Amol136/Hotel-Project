@@ -7,45 +7,36 @@ function ManagerLogin() {
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  const [managerId, setManagerId] =
-    useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
 
-  const [password, setPassword] =
-    useState("");
-
-  const [error, setError] =
-    useState("");
-
-  const handleSubmit = (event) => {
-    event.preventDefault();
+  const handleSubmit = (e) => {
+    e.preventDefault();
     setError("");
 
     const managers =
-      JSON.parse(
-        localStorage.getItem("managers")
-      ) || [];
-
-    const enteredId =
-      managerId.trim().toUpperCase();
+      JSON.parse(localStorage.getItem("managers")) || [];
 
     const manager = managers.find(
       (item) =>
-        item.managerId?.toUpperCase() ===
-          enteredId &&
-        item.password === password
+        item.email?.trim().toLowerCase() ===
+        email.trim().toLowerCase()
     );
 
     if (!manager) {
-      setError(
-        "Manager ID किंवा Password चुकीचा आहे."
-      );
+      setError("Invalid Email ID or Password.");
       return;
     }
 
     if (manager.status === "INACTIVE") {
-      setError(
-        "हा Manager account Inactive आहे."
-      );
+      setError("Your account is inactive.");
+      return;
+    }
+
+    if (manager.password !== password) {
+      setError("Invalid Email ID or Password.");
       return;
     }
 
@@ -53,113 +44,70 @@ function ManagerLogin() {
       id: manager.id,
       managerId: manager.managerId,
       name: manager.managerName,
-      subAdminId:
-        manager.createdBySubAdminId,
+      email: manager.email,
+      subAdminId: manager.createdBySubAdminId,
       role: "MANAGER",
     });
 
-    navigate(
-      "/manager/dashboard",
-      { replace: true }
-    );
+    navigate("/manager/dashboard", { replace: true });
   };
 
   return (
     <div className="role-login-page">
-
       <div className="role-login-card">
-
-        <div className="role-login-badge">
-          MANAGER
-        </div>
+        <div className="role-login-badge">MANAGER</div>
 
         <h1>MANAGER LOGIN</h1>
-
-        <p>
-          Customer ID आणि Register Photos manage करा
-        </p>
+        <p>Enter your Email ID and Password.</p>
 
         <form onSubmit={handleSubmit}>
-
           <div className="role-login-group">
-
-            <label>
-              MANAGER ID
-            </label>
-
+            <label>EMAIL ID</label>
             <input
-              type="text"
-              placeholder="Enter Manager ID"
-              value={managerId}
-              onChange={(e) =>
-                setManagerId(
-                  e.target.value
-                )
-              }
-              autoComplete="username"
+              type="email"
+              placeholder="Enter Email ID"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              required
             />
-
           </div>
 
           <div className="role-login-group">
+            <label>PASSWORD</label>
 
-            <label>
-              PASSWORD
-            </label>
+            <div className="password-input-wrapper">
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Enter Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                required
+              />
 
-            <input
-              type="password"
-              placeholder="Enter Password"
-              value={password}
-              onChange={(e) =>
-                setPassword(
-                  e.target.value
-                )
-              }
-              autoComplete="current-password"
-            />
-
+              <button
+                type="button"
+                className="password-eye-btn"
+                onClick={() => setShowPassword((prev) => !prev)}
+                aria-label={
+                  showPassword ? "Hide password" : "Show password"
+                }
+              >
+                {showPassword ? "🙈" : "👁"}
+              </button>
+            </div>
           </div>
 
           {error && (
-            <div className="role-login-error">
-              {error}
-            </div>
+            <div className="role-login-error">{error}</div>
           )}
 
-          <button
-            type="submit"
-            className="role-login-submit"
-          >
+          <button type="submit" className="role-login-submit">
             MANAGER LOGIN →
           </button>
-
         </form>
-
-        <div className="role-login-switch">
-
-          <button
-            type="button"
-            onClick={() =>
-              navigate("/login/admin")
-            }
-          >
-            Admin Login
-          </button>
-
-          <button
-            type="button"
-            onClick={() =>
-              navigate("/login/sub-admin")
-            }
-          >
-            Sub Admin Login
-          </button>
-
-        </div>
-
       </div>
-
     </div>
   );
 }

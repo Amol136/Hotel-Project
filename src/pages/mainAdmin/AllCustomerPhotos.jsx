@@ -5,9 +5,17 @@ import "../../styles/tables.css";
 function AllCustomerPhotos() {
   const navigate = useNavigate();
 
-  const [search, setSearch] = useState("");
+  // =========================
+  // SEARCH FILTERS
+  // =========================
+  const [searchDate, setSearchDate] = useState("");
+  const [searchSubAdmin, setSearchSubAdmin] = useState("");
+  const [searchManager, setSearchManager] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
 
+  // =========================
+  // LOCAL STORAGE DATA
+  // =========================
   const [records] = useState(() => {
     return JSON.parse(localStorage.getItem("customerRecords")) || [];
   });
@@ -20,6 +28,9 @@ function AllCustomerPhotos() {
     return JSON.parse(localStorage.getItem("subAdmins")) || [];
   });
 
+  // =========================
+  // GET MANAGER
+  // =========================
   const getManager = (managerId) => {
     return managers.find(
       (manager) =>
@@ -28,6 +39,9 @@ function AllCustomerPhotos() {
     );
   };
 
+  // =========================
+  // GET SUB ADMIN
+  // =========================
   const getSubAdmin = (manager) => {
     if (!manager) return null;
 
@@ -38,27 +52,52 @@ function AllCustomerPhotos() {
     );
   };
 
-  const text = search.toLowerCase().trim();
-
+  // =========================
+  // FILTER RECORDS
+  // =========================
   const filteredRecords = records.filter((record) => {
     const manager = getManager(record.managerId);
     const subAdmin = getSubAdmin(manager);
 
-    const matchesSearch =
-      !text ||
-      record.date?.toLowerCase().includes(text) ||
-      record.managerId?.toLowerCase().includes(text) ||
-      manager?.managerName?.toLowerCase().includes(text) ||
-      subAdmin?.name?.toLowerCase().includes(text) ||
-      subAdmin?.propertyName?.toLowerCase().includes(text);
+    const dateText = searchDate.trim().toLowerCase();
+    const subAdminText = searchSubAdmin.trim().toLowerCase();
+    const managerText = searchManager.trim().toLowerCase();
 
+    // SEARCH BY DATE
+    const matchesDate =
+      !dateText ||
+      record.date?.toLowerCase().includes(dateText);
+
+    // SEARCH BY SUB ADMIN
+    // Name किंवा Sub Admin ID दोन्ही search होतील
+    const matchesSubAdmin =
+      !subAdminText ||
+      subAdmin?.name?.toLowerCase().includes(subAdminText) ||
+      subAdmin?.subAdminId?.toLowerCase().includes(subAdminText);
+
+    // SEARCH BY MANAGER
+    // Manager Name किंवा Manager ID दोन्ही search होतील
+    const matchesManager =
+      !managerText ||
+      manager?.managerName?.toLowerCase().includes(managerText) ||
+      record.managerId?.toLowerCase().includes(managerText);
+
+    // STATUS FILTER
     const matchesStatus =
       statusFilter === "ALL" ||
       record.status === statusFilter;
 
-    return matchesSearch && matchesStatus;
+    return (
+      matchesDate &&
+      matchesSubAdmin &&
+      matchesManager &&
+      matchesStatus
+    );
   });
 
+  // =========================
+  // VIEW PHOTO
+  // =========================
   const handleViewPhoto = (side) => {
     alert(
       `${side} Customer ID Photo Spring Boot + Cloudflare R2 जोडल्यानंतर येथे उघडेल.`
@@ -67,6 +106,8 @@ function AllCustomerPhotos() {
 
   return (
     <div className="all-customer-page">
+
+      {/* ================= HEADER ================= */}
 
       <header className="all-customer-header">
 
@@ -92,6 +133,8 @@ function AllCustomerPhotos() {
 
       <main className="all-customer-container">
 
+        {/* ================= SUMMARY ================= */}
+
         <section className="all-customer-summary">
 
           <div>
@@ -105,7 +148,8 @@ function AllCustomerPhotos() {
             <strong>
               {
                 records.filter(
-                  (record) => record.status === "VERIFIED"
+                  (record) =>
+                    record.status === "VERIFIED"
                 ).length
               }
             </strong>
@@ -117,7 +161,8 @@ function AllCustomerPhotos() {
             <strong>
               {
                 records.filter(
-                  (record) => record.status === "PENDING"
+                  (record) =>
+                    record.status === "PENDING"
                 ).length
               }
             </strong>
@@ -130,26 +175,72 @@ function AllCustomerPhotos() {
 
         </section>
 
+        {/* ================= TOOLBAR ================= */}
+
         <section className="all-customer-toolbar">
 
           <div>
             <h2>Customer ID Records</h2>
 
             <p>
-              Date, Manager, Sub Admin किंवा Property ने search करा
+              Date, Sub Admin आणि Manager नुसार search करा
             </p>
           </div>
 
-          <div className="all-customer-filters">
+        </section>
+
+        {/* ================= SEARCH FILTERS ================= */}
+
+        <section className="customer-search-filters">
+
+          {/* SEARCH BY DATE */}
+
+          <div className="customer-filter-field">
+            <label>SEARCH BY DATE</label>
+
+            <input
+              type="date"
+              value={searchDate}
+              onChange={(event) =>
+                setSearchDate(event.target.value)
+              }
+            />
+          </div>
+
+          {/* SEARCH BY SUB ADMIN */}
+
+          <div className="customer-filter-field">
+            <label>SEARCH BY SUB ADMIN</label>
 
             <input
               type="text"
-              placeholder="Search customer record..."
-              value={search}
+              placeholder="Sub Admin name or ID..."
+              value={searchSubAdmin}
               onChange={(event) =>
-                setSearch(event.target.value)
+                setSearchSubAdmin(event.target.value)
               }
             />
+          </div>
+
+          {/* SEARCH BY MANAGER */}
+
+          <div className="customer-filter-field">
+            <label>SEARCH BY MANAGER</label>
+
+            <input
+              type="text"
+              placeholder="Manager name or ID..."
+              value={searchManager}
+              onChange={(event) =>
+                setSearchManager(event.target.value)
+              }
+            />
+          </div>
+
+          {/* STATUS */}
+
+          <div className="customer-filter-field">
+            <label>STATUS</label>
 
             <select
               value={statusFilter}
@@ -157,27 +248,42 @@ function AllCustomerPhotos() {
                 setStatusFilter(event.target.value)
               }
             >
-              <option value="ALL">All Status</option>
-              <option value="VERIFIED">Verified</option>
-              <option value="PENDING">Pending</option>
-            </select>
+              <option value="ALL">
+                All Status
+              </option>
 
+              <option value="VERIFIED">
+                Verified
+              </option>
+
+              <option value="PENDING">
+                Pending
+              </option>
+
+              <option value="REJECTED">
+                Rejected
+              </option>
+            </select>
           </div>
 
         </section>
+
+        {/* ================= TABLE ================= */}
 
         <section className="all-customer-table-card">
 
           {filteredRecords.length === 0 ? (
 
             <div className="all-customer-empty">
+
               <div>🪪</div>
 
               <h3>Customer ID Record नाही</h3>
 
               <p>
-                Manager ने Customer ID Upload केल्यानंतर येथे दिसेल.
+                Search/filter प्रमाणे Customer ID record सापडला नाही.
               </p>
+
             </div>
 
           ) : (
@@ -201,92 +307,123 @@ function AllCustomerPhotos() {
 
                 <tbody>
 
-                  {filteredRecords.map((record, index) => {
-                    const manager =
-                      getManager(record.managerId);
+                  {filteredRecords.map(
+                    (record, index) => {
 
-                    const subAdmin =
-                      getSubAdmin(manager);
+                      const manager =
+                        getManager(record.managerId);
 
-                    return (
-                      <tr key={record.id}>
+                      const subAdmin =
+                        getSubAdmin(manager);
 
-                        <td>{index + 1}</td>
+                      return (
+                        <tr key={record.id}>
 
-                        <td>
-                          <strong>{record.date}</strong>
-                        </td>
+                          <td>
+                            {index + 1}
+                          </td>
 
-                        <td>
-                          <div className="customer-manager-info">
+                          <td>
+                            <strong>
+                              {record.date}
+                            </strong>
+                          </td>
 
-                            <div className="customer-manager-avatar">
-                              {(manager?.managerName || "M")
-                                .charAt(0)
-                                .toUpperCase()}
+                          {/* MANAGER */}
+
+                          <td>
+
+                            <div className="customer-manager-info">
+
+                              <div className="customer-manager-avatar">
+
+                                {(manager?.managerName || "M")
+                                  .charAt(0)
+                                  .toUpperCase()}
+
+                              </div>
+
+                              <div>
+
+                                <strong>
+                                  {manager?.managerName ||
+                                    "Manager"}
+                                </strong>
+
+                                <small>
+                                  {record.managerId || "-"}
+                                </small>
+
+                              </div>
+
                             </div>
 
-                            <div>
-                              <strong>
-                                {manager?.managerName ||
-                                  "Manager"}
-                              </strong>
+                          </td>
 
-                              <small>
-                                {record.managerId || "-"}
-                              </small>
-                            </div>
+                          {/* SUB ADMIN */}
 
-                          </div>
-                        </td>
+                          <td>
+                            {subAdmin?.name || "-"}
+                          </td>
 
-                        <td>
-                          {subAdmin?.name || "-"}
-                        </td>
+                          {/* PROPERTY */}
 
-                        <td>
-                          <strong>
-                            {subAdmin?.propertyName || "-"}
-                          </strong>
-                        </td>
+                          <td>
+                            <strong>
+                              {subAdmin?.propertyName || "-"}
+                            </strong>
+                          </td>
 
-                        <td>
-                          <button
-                            className="customer-front-view"
-                            onClick={() =>
-                              handleViewPhoto("Front")
-                            }
-                          >
-                            📷 FRONT
-                          </button>
-                        </td>
+                          {/* FRONT */}
 
-                        <td>
-                          <button
-                            className="customer-back-view"
-                            onClick={() =>
-                              handleViewPhoto("Back")
-                            }
-                          >
-                            📷 BACK
-                          </button>
-                        </td>
+                          <td>
 
-                        <td>
-                          <span
-                            className={
-                              record.status === "VERIFIED"
-                                ? "customer-main-status verified"
-                                : "customer-main-status pending"
-                            }
-                          >
-                            {record.status || "PENDING"}
-                          </span>
-                        </td>
+                            <button
+                              className="customer-front-view"
+                              onClick={() =>
+                                handleViewPhoto("Front")
+                              }
+                            >
+                              📷 FRONT
+                            </button>
 
-                      </tr>
-                    );
-                  })}
+                          </td>
+
+                          {/* BACK */}
+
+                          <td>
+
+                            <button
+                              className="customer-back-view"
+                              onClick={() =>
+                                handleViewPhoto("Back")
+                              }
+                            >
+                              📷 BACK
+                            </button>
+
+                          </td>
+
+                          {/* STATUS */}
+
+                          <td>
+
+                            <span
+                              className={
+                                record.status === "VERIFIED"
+                                  ? "customer-main-status verified"
+                                  : "customer-main-status pending"
+                              }
+                            >
+                              {record.status || "PENDING"}
+                            </span>
+
+                          </td>
+
+                        </tr>
+                      );
+                    }
+                  )}
 
                 </tbody>
 

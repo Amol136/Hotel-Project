@@ -8,7 +8,6 @@ function CreateSubAdmin() {
   const [formData, setFormData] = useState({
     name: "",
     subAdminId: "",
-    propertyName: "",
     mobile: "",
     email: "",
     password: "",
@@ -35,7 +34,6 @@ function CreateSubAdmin() {
     if (
       !formData.name ||
       !formData.subAdminId ||
-      !formData.propertyName ||
       !formData.mobile ||
       !formData.email ||
       !formData.password
@@ -75,7 +73,9 @@ function CreateSubAdmin() {
     );
 
     if (duplicateEmail) {
-      setError("या Email वर Sub Admin आधीपासून अस्तित्वात आहे.");
+      setError(
+        "या Email वर Sub Admin आधीपासून अस्तित्वात आहे."
+      );
       return;
     }
 
@@ -83,7 +83,6 @@ function CreateSubAdmin() {
       id: Date.now(),
       name: formData.name.trim(),
       subAdminId: formData.subAdminId.trim(),
-      propertyName: formData.propertyName.trim(),
       mobile: formData.mobile,
       email: formData.email.trim(),
 
@@ -107,7 +106,6 @@ function CreateSubAdmin() {
     setFormData({
       name: "",
       subAdminId: "",
-      propertyName: "",
       mobile: "",
       email: "",
       password: "",
@@ -129,17 +127,21 @@ function CreateSubAdmin() {
         </button>
 
         <div className="create-subadmin-heading">
+
           <div className="subadmin-heading-icon">
             🏢
           </div>
 
           <div>
             <span>MAIN ADMIN MANAGEMENT</span>
+
             <h1>CREATE SUB ADMIN</h1>
+
             <p>
               नवीन Sub Admin account तयार करा
             </p>
           </div>
+
         </div>
 
         <form
@@ -147,7 +149,10 @@ function CreateSubAdmin() {
           onSubmit={handleSubmit}
         >
 
+          {/* SUB ADMIN NAME */}
+
           <div className="subadmin-form-group">
+
             <label>SUB ADMIN NAME</label>
 
             <input
@@ -157,9 +162,13 @@ function CreateSubAdmin() {
               onChange={handleChange}
               placeholder="Ex: Rahul Patil"
             />
+
           </div>
 
+          {/* SUB ADMIN ID */}
+
           <div className="subadmin-form-group">
+
             <label>SUB ADMIN ID</label>
 
             <input
@@ -169,48 +178,30 @@ function CreateSubAdmin() {
               onChange={handleChange}
               placeholder="Ex: SUBADMIN-001"
             />
+
           </div>
 
+          {/* MOBILE NUMBER */}
+
           <div className="subadmin-form-group">
-            <label>HOTEL / PROPERTY NAME</label>
+
+            <label>MOBILE NUMBER</label>
 
             <input
-              type="text"
-              name="propertyName"
-              value={formData.propertyName}
+              type="tel"
+              name="mobile"
+              maxLength="10"
+              value={formData.mobile}
               onChange={handleChange}
-              placeholder="Ex: Standard Stay"
+              placeholder="10-digit number"
             />
-          </div>
-
-          <div className="subadmin-two-column">
-
-            <div className="subadmin-form-group">
-              <label>MOBILE NUMBER</label>
-
-              <input
-                type="tel"
-                name="mobile"
-                maxLength="10"
-                value={formData.mobile}
-                onChange={handleChange}
-                placeholder="10-digit number"
-              />
-            </div>
-
-            <div className="subadmin-form-group">
-              <label>STATUS</label>
-
-              <input
-                type="text"
-                value="ACTIVE"
-                disabled
-              />
-            </div>
 
           </div>
+
+          {/* EMAIL ADDRESS */}
 
           <div className="subadmin-form-group">
+
             <label>EMAIL ADDRESS</label>
 
             <input
@@ -220,9 +211,13 @@ function CreateSubAdmin() {
               onChange={handleChange}
               placeholder="subadmin@example.com"
             />
+
           </div>
 
+          {/* LOGIN PASSWORD */}
+
           <div className="subadmin-form-group">
+
             <label>LOGIN PASSWORD</label>
 
             <input
@@ -232,7 +227,10 @@ function CreateSubAdmin() {
               onChange={handleChange}
               placeholder="Minimum 6 characters"
             />
+
           </div>
+
+          {/* ERROR */}
 
           {error && (
             <div className="subadmin-form-error">
@@ -240,11 +238,15 @@ function CreateSubAdmin() {
             </div>
           )}
 
+          {/* SUCCESS */}
+
           {message && (
             <div className="subadmin-form-success">
               ✓ {message}
             </div>
           )}
+
+          {/* CREATE BUTTON */}
 
           <button
             type="submit"
