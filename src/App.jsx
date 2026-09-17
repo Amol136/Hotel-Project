@@ -5,6 +5,19 @@ import {
 } from "react-router-dom";
 
 // ======================
+// VERCEL APP ROLE
+// ======================
+
+const APP_ROLE = import.meta.env.VITE_APP_ROLE || "ADMIN";
+
+const DEFAULT_LOGIN =
+  APP_ROLE === "SUB_ADMIN"
+    ? "/login/sub-admin"
+    : APP_ROLE === "MANAGER"
+    ? "/login/manager"
+    : "/login/admin";
+
+// ======================
 // LOGIN
 // ======================
 
@@ -61,7 +74,7 @@ function App() {
         path="/"
         element={
           <Navigate
-            to="/login/admin"
+            to={DEFAULT_LOGIN}
             replace
           />
         }
@@ -75,7 +88,7 @@ function App() {
         path="/login"
         element={
           <Navigate
-            to="/login/admin"
+            to={DEFAULT_LOGIN}
             replace
           />
         }
@@ -275,14 +288,13 @@ function App() {
 
       {/* ==================================
           UNKNOWN URL
-          ALWAYS KEEP LAST
-      ================================== */}
+          ================================== */}
 
       <Route
         path="*"
         element={
           <Navigate
-            to="/login/admin"
+            to={DEFAULT_LOGIN}
             replace
           />
         }
