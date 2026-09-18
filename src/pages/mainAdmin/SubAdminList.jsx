@@ -39,26 +39,7 @@ function SubAdminList() {
     );
   }, [search, subAdmins]);
 
-  // =====================================
-  // ACTIVE / INACTIVE
-  // =====================================
-
-  const toggleStatus = (id) => {
-    const updated = subAdmins.map((item) =>
-      item.id === id
-        ? {
-            ...item,
-            status:
-              item.status === "ACTIVE"
-                ? "INACTIVE"
-                : "ACTIVE",
-          }
-        : item
-    );
-
-    saveSubAdmins(updated);
-  };
-
+  
   // =====================================
   // DELETE
   // =====================================
@@ -278,7 +259,6 @@ function SubAdminList() {
 
                     <th>EMAIL</th>
 
-                    <th>STATUS</th>
 
                     <th>ACTION</th>
 
@@ -345,23 +325,7 @@ function SubAdminList() {
 
                         {/* STATUS */}
 
-                        <td>
-
-                          <button
-                            className={
-                              item.status === "ACTIVE"
-                                ? "main-subadmin-status active"
-                                : "main-subadmin-status inactive"
-                            }
-                            onClick={() =>
-                              toggleStatus(item.id)
-                            }
-                          >
-                            {item.status}
-                          </button>
-
-                        </td>
-
+                        
                         {/* ACTION */}
 
                         <td>
