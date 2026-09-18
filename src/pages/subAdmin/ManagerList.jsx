@@ -111,34 +111,7 @@ function ManagerList() {
     saveManagers(updatedManagers);
   };
 
-  // =====================================
-  // ACTIVE / INACTIVE
-  // =====================================
-
-  const toggleStatus = (managerId) => {
-    const updatedManagers = managers.map(
-      (manager) => {
-        if (
-          manager.id === managerId &&
-          manager.createdBySubAdminId ===
-            currentSubAdminId
-        ) {
-          return {
-            ...manager,
-            status:
-              manager.status === "ACTIVE"
-                ? "INACTIVE"
-                : "ACTIVE",
-          };
-        }
-
-        return manager;
-      }
-    );
-
-    saveManagers(updatedManagers);
-  };
-
+  
   // =====================================
   // OPEN EDIT
   // =====================================
@@ -469,7 +442,6 @@ function ManagerList() {
                     <th>MANAGER ID</th>
                     <th>MOBILE</th>
                     <th>EMAIL</th>
-                    <th>STATUS</th>
                     <th>ACTION</th>
                   </tr>
 
@@ -520,27 +492,7 @@ function ManagerList() {
                           {manager.email}
                         </td>
 
-                        <td>
-
-                          <button
-                            type="button"
-                            className={
-                              manager.status ===
-                              "ACTIVE"
-                                ? "manager-status active"
-                                : "manager-status inactive"
-                            }
-                            onClick={() =>
-                              toggleStatus(
-                                manager.id
-                              )
-                            }
-                          >
-                            {manager.status}
-                          </button>
-
-                        </td>
-
+                        
                         <td>
 
                           <div className="manager-action-buttons">

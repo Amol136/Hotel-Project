@@ -21,19 +21,27 @@ function SubAdminList() {
     );
   };
 
+  // =====================================
+  // SEARCH
+  // =====================================
+
   const filteredSubAdmins = useMemo(() => {
     const text = search.toLowerCase().trim();
 
     if (!text) return subAdmins;
 
-    return subAdmins.filter((item) =>
-      item.name?.toLowerCase().includes(text) ||
-      item.subAdminId?.toLowerCase().includes(text) ||
-      item.propertyName?.toLowerCase().includes(text) ||
-      item.mobile?.includes(text) ||
-      item.email?.toLowerCase().includes(text)
+    return subAdmins.filter(
+      (item) =>
+        item.name?.toLowerCase().includes(text) ||
+        item.subAdminId?.toLowerCase().includes(text) ||
+        item.mobile?.includes(text) ||
+        item.email?.toLowerCase().includes(text)
     );
   }, [search, subAdmins]);
+
+  // =====================================
+  // ACTIVE / INACTIVE
+  // =====================================
 
   const toggleStatus = (id) => {
     const updated = subAdmins.map((item) =>
@@ -51,6 +59,10 @@ function SubAdminList() {
     saveSubAdmins(updated);
   };
 
+  // =====================================
+  // DELETE
+  // =====================================
+
   const handleDelete = (id) => {
     const confirmed = window.confirm(
       "हा Sub Admin delete करायचा आहे का?"
@@ -65,6 +77,10 @@ function SubAdminList() {
     saveSubAdmins(updated);
   };
 
+  // =====================================
+  // EDIT SAVE
+  // =====================================
+
   const handleEditSave = (event) => {
     event.preventDefault();
 
@@ -75,22 +91,33 @@ function SubAdminList() {
     );
 
     saveSubAdmins(updated);
+
     setEditingSubAdmin(null);
   };
 
   return (
     <div className="main-subadmin-list-page">
 
+      {/* =====================================
+          HEADER
+      ===================================== */}
+
       <header className="main-subadmin-list-header">
 
         <div>
-          <span>MAIN ADMIN / USER MANAGEMENT</span>
 
-          <h1>Sub Admin List</h1>
+          <span>
+            MAIN ADMIN / USER MANAGEMENT
+          </span>
+
+          <h1>
+            Sub Admin List
+          </h1>
 
           <p>
             सर्व Sub Admin accounts manage करा
           </p>
+
         </div>
 
         <div className="main-subadmin-header-actions">
@@ -98,7 +125,9 @@ function SubAdminList() {
           <button
             className="main-add-subadmin"
             onClick={() =>
-              navigate("/main-admin/create-sub-admin")
+              navigate(
+                "/main-admin/create-sub-admin"
+              )
             }
           >
             + ADD SUB ADMIN
@@ -107,7 +136,9 @@ function SubAdminList() {
           <button
             className="main-back-dashboard"
             onClick={() =>
-              navigate("/main-admin/dashboard")
+              navigate(
+                "/main-admin/dashboard"
+              )
             }
           >
             ← DASHBOARD
@@ -119,46 +150,76 @@ function SubAdminList() {
 
       <main className="main-subadmin-list-container">
 
+        {/* =====================================
+            SUMMARY
+        ===================================== */}
+
         <section className="main-subadmin-summary">
 
           <div>
-            <small>TOTAL SUB ADMINS</small>
-            <strong>{subAdmins.length}</strong>
+
+            <small>
+              TOTAL SUB ADMINS
+            </small>
+
+            <strong>
+              {subAdmins.length}
+            </strong>
+
           </div>
 
           <div className="summary-active">
-            <small>ACTIVE</small>
+
+            <small>
+              ACTIVE
+            </small>
 
             <strong>
               {
                 subAdmins.filter(
-                  (item) => item.status === "ACTIVE"
+                  (item) =>
+                    item.status === "ACTIVE"
                 ).length
               }
             </strong>
+
           </div>
 
           <div className="summary-inactive">
-            <small>INACTIVE</small>
+
+            <small>
+              INACTIVE
+            </small>
 
             <strong>
               {
                 subAdmins.filter(
-                  (item) => item.status === "INACTIVE"
+                  (item) =>
+                    item.status === "INACTIVE"
                 ).length
               }
             </strong>
+
           </div>
 
         </section>
 
+        {/* =====================================
+            SEARCH TOOLBAR
+        ===================================== */}
+
         <section className="main-subadmin-toolbar">
 
           <div>
-            <h2>Sub Admin Accounts</h2>
+
+            <h2>
+              Sub Admin Accounts
+            </h2>
+
             <p>
-              Name, Property, ID, Mobile किंवा Email ने search करा
+              Name, ID, Mobile किंवा Email ने search करा
             </p>
+
           </div>
 
           <input
@@ -172,16 +233,29 @@ function SubAdminList() {
 
         </section>
 
+        {/* =====================================
+            TABLE
+        ===================================== */}
+
         <section className="main-subadmin-table-card">
 
           {filteredSubAdmins.length === 0 ? (
 
             <div className="main-subadmin-empty">
-              <div>🏢</div>
-              <h3>Sub Admin सापडला नाही</h3>
+
+              <div>
+                🏢
+              </div>
+
+              <h3>
+                Sub Admin सापडला नाही
+              </h3>
+
               <p>
-                नवीन Sub Admin तयार करण्यासाठी Add Sub Admin वापरा.
+                नवीन Sub Admin तयार करण्यासाठी
+                Add Sub Admin वापरा.
               </p>
+
             </div>
 
           ) : (
@@ -191,16 +265,25 @@ function SubAdminList() {
               <table className="main-subadmin-table">
 
                 <thead>
+
                   <tr>
+
                     <th>SR.</th>
+
                     <th>SUB ADMIN</th>
+
                     <th>SUB ADMIN ID</th>
-                    <th>PROPERTY</th>
+
                     <th>MOBILE</th>
+
                     <th>EMAIL</th>
+
                     <th>STATUS</th>
+
                     <th>ACTION</th>
+
                   </tr>
+
                 </thead>
 
                 <tbody>
@@ -210,15 +293,24 @@ function SubAdminList() {
 
                       <tr key={item.id}>
 
-                        <td>{index + 1}</td>
+                        {/* SR */}
 
                         <td>
+                          {index + 1}
+                        </td>
+
+                        {/* SUB ADMIN */}
+
+                        <td>
+
                           <div className="main-subadmin-name">
 
                             <div className="main-subadmin-avatar">
+
                               {item.name
                                 ?.charAt(0)
                                 .toUpperCase()}
+
                             </div>
 
                             <strong>
@@ -226,25 +318,35 @@ function SubAdminList() {
                             </strong>
 
                           </div>
+
                         </td>
 
+                        {/* SUB ADMIN ID */}
+
                         <td>
+
                           <span className="main-subadmin-id">
                             {item.subAdminId}
                           </span>
+
                         </td>
 
+                        {/* MOBILE */}
+
                         <td>
-                          <strong>
-                            {item.propertyName}
-                          </strong>
+                          {item.mobile}
                         </td>
 
-                        <td>{item.mobile}</td>
-
-                        <td>{item.email}</td>
+                        {/* EMAIL */}
 
                         <td>
+                          {item.email}
+                        </td>
+
+                        {/* STATUS */}
+
+                        <td>
+
                           <button
                             className={
                               item.status === "ACTIVE"
@@ -257,9 +359,13 @@ function SubAdminList() {
                           >
                             {item.status}
                           </button>
+
                         </td>
 
+                        {/* ACTION */}
+
                         <td>
+
                           <div className="main-subadmin-actions">
 
                             <button
@@ -283,6 +389,7 @@ function SubAdminList() {
                             </button>
 
                           </div>
+
                         </td>
 
                       </tr>
@@ -302,7 +409,9 @@ function SubAdminList() {
 
       </main>
 
-      {/* EDIT MODAL */}
+      {/* =====================================
+          EDIT MODAL
+      ===================================== */}
 
       {editingSubAdmin && (
 
@@ -313,8 +422,15 @@ function SubAdminList() {
             <div className="main-subadmin-modal-header">
 
               <div>
-                <small>EDIT SUB ADMIN</small>
-                <h2>{editingSubAdmin.name}</h2>
+
+                <small>
+                  EDIT SUB ADMIN
+                </small>
+
+                <h2>
+                  {editingSubAdmin.name}
+                </h2>
+
               </div>
 
               <button
@@ -329,8 +445,13 @@ function SubAdminList() {
 
             <form onSubmit={handleEditSave}>
 
+              {/* NAME */}
+
               <div className="main-subadmin-edit-field">
-                <label>SUB ADMIN NAME</label>
+
+                <label>
+                  SUB ADMIN NAME
+                </label>
 
                 <input
                   type="text"
@@ -343,42 +464,41 @@ function SubAdminList() {
                     })
                   }
                 />
+
               </div>
 
+              {/* SUB ADMIN ID */}
+
               <div className="main-subadmin-edit-field">
-                <label>SUB ADMIN ID</label>
+
+                <label>
+                  SUB ADMIN ID
+                </label>
 
                 <input
                   type="text"
                   required
-                  value={editingSubAdmin.subAdminId}
+                  value={
+                    editingSubAdmin.subAdminId
+                  }
                   onChange={(e) =>
                     setEditingSubAdmin({
                       ...editingSubAdmin,
-                      subAdminId: e.target.value,
+                      subAdminId:
+                        e.target.value,
                     })
                   }
                 />
+
               </div>
 
-              <div className="main-subadmin-edit-field">
-                <label>HOTEL / PROPERTY NAME</label>
-
-                <input
-                  type="text"
-                  required
-                  value={editingSubAdmin.propertyName}
-                  onChange={(e) =>
-                    setEditingSubAdmin({
-                      ...editingSubAdmin,
-                      propertyName: e.target.value,
-                    })
-                  }
-                />
-              </div>
+              {/* MOBILE */}
 
               <div className="main-subadmin-edit-field">
-                <label>MOBILE</label>
+
+                <label>
+                  MOBILE
+                </label>
 
                 <input
                   type="text"
@@ -392,10 +512,16 @@ function SubAdminList() {
                     })
                   }
                 />
+
               </div>
 
+              {/* EMAIL */}
+
               <div className="main-subadmin-edit-field">
-                <label>EMAIL</label>
+
+                <label>
+                  EMAIL
+                </label>
 
                 <input
                   type="email"
@@ -408,7 +534,10 @@ function SubAdminList() {
                     })
                   }
                 />
+
               </div>
+
+              {/* ACTIONS */}
 
               <div className="main-subadmin-modal-actions">
 
