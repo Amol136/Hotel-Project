@@ -25,6 +25,9 @@ function CustomerId() {
 
   const [message, setMessage] = useState("");
 
+  // SEARCH
+  const [search, setSearch] = useState("");
+
   // Customer records from localStorage
   const [records, setRecords] = useState(() => {
     const savedRecords =
@@ -42,6 +45,17 @@ function CustomerId() {
   const myRecords = records.filter(
     (record) =>
       record.managerId === user?.managerId
+  );
+
+  // =====================================
+  // SEARCH FILTER
+  // =====================================
+
+  const filteredRecords = myRecords.filter(
+    (record) =>
+      record.date
+        .toLowerCase()
+        .includes(search.toLowerCase())
   );
 
   // =====================================
@@ -231,6 +245,118 @@ function CustomerId() {
     */
   };
 
+  // =====================================
+  // VIEW FRONT PHOTO
+  // =====================================
+
+  const handleViewFrontPhoto = (record) => {
+    if (
+      record.managerId !==
+      user?.managerId
+    ) {
+      window.alert(
+        "या Customer ID वर तुम्हाला access नाही."
+      );
+      return;
+    }
+
+    window.alert(
+      "Actual Front Photo Spring Boot + R2 जोडल्यानंतर दिसेल."
+    );
+  };
+
+  // =====================================
+  // DOWNLOAD FRONT PHOTO
+  // =====================================
+
+  const handleDownloadFrontPhoto = (record) => {
+    if (
+      record.managerId !==
+      user?.managerId
+    ) {
+      window.alert(
+        "या Customer ID वर तुम्हाला access नाही."
+      );
+      return;
+    }
+
+    if (record.frontPhotoUrl) {
+      const link =
+        document.createElement("a");
+
+      link.href = record.frontPhotoUrl;
+
+      link.download =
+        `customer-id-front-${record.date}.jpg`;
+
+      document.body.appendChild(link);
+
+      link.click();
+
+      document.body.removeChild(link);
+    } else {
+      window.alert(
+        "Actual Front Photo download Spring Boot + R2 जोडल्यानंतर उपलब्ध होईल."
+      );
+    }
+  };
+
+  // =====================================
+  // VIEW BACK PHOTO
+  // =====================================
+
+  const handleViewBackPhoto = (record) => {
+    if (
+      record.managerId !==
+      user?.managerId
+    ) {
+      window.alert(
+        "या Customer ID वर तुम्हाला access नाही."
+      );
+      return;
+    }
+
+    window.alert(
+      "Actual Back Photo Spring Boot + R2 जोडल्यानंतर दिसेल."
+    );
+  };
+
+  // =====================================
+  // DOWNLOAD BACK PHOTO
+  // =====================================
+
+  const handleDownloadBackPhoto = (record) => {
+    if (
+      record.managerId !==
+      user?.managerId
+    ) {
+      window.alert(
+        "या Customer ID वर तुम्हाला access नाही."
+      );
+      return;
+    }
+
+    if (record.backPhotoUrl) {
+      const link =
+        document.createElement("a");
+
+      link.href = record.backPhotoUrl;
+
+      link.download =
+        `customer-id-back-${record.date}.jpg`;
+
+      document.body.appendChild(link);
+
+      link.click();
+
+      document.body.removeChild(link);
+    } else {
+      window.alert(
+        "Actual Back Photo download Spring Boot + R2 जोडल्यानंतर उपलब्ध होईल."
+      );
+    }
+  };
+
   return (
     <div className="customer-page">
 
@@ -361,7 +487,6 @@ function CustomerId() {
               </h3>
 
             </div>
-
             {/* =========================
                 PHOTO GRID
             ========================= */}
@@ -648,15 +773,28 @@ function CustomerId() {
 
             </div>
 
-            <div className="record-count">
-              {myRecords.length}
+            <div>
+
+              <input
+                type="text"
+                placeholder="Search by date..."
+                value={search}
+                onChange={(event) =>
+                  setSearch(event.target.value)
+                }
+              />
+
+              <div className="record-count">
+                {filteredRecords.length}
+              </div>
+
             </div>
 
           </div>
 
           {/* EMPTY STATE */}
 
-          {myRecords.length === 0 ? (
+          {filteredRecords.length === 0 ? (
 
             <div className="customer-empty-records">
 
@@ -696,7 +834,7 @@ function CustomerId() {
 
                 <tbody>
 
-                  {myRecords.map(
+                  {filteredRecords.map(
                     (record, index) => (
 
                       <tr key={record.id}>
@@ -715,12 +853,23 @@ function CustomerId() {
                             type="button"
                             className="view-front-button"
                             onClick={() =>
-                              window.alert(
-                                "Actual Front Photo Spring Boot + R2 जोडल्यानंतर दिसेल."
+                              handleViewFrontPhoto(
+                                record
                               )
                             }
                           >
                             फोटो पहा
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleDownloadFrontPhoto(
+                                record
+                              )
+                            }
+                          >
+                            DOWNLOAD
                           </button>
 
                         </td>
@@ -731,12 +880,23 @@ function CustomerId() {
                             type="button"
                             className="view-back-button"
                             onClick={() =>
-                              window.alert(
-                                "Actual Back Photo Spring Boot + R2 जोडल्यानंतर दिसेल."
+                              handleViewBackPhoto(
+                                record
                               )
                             }
                           >
                             फोटो पहा
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleDownloadBackPhoto(
+                                record
+                              )
+                            }
+                          >
+                            DOWNLOAD
                           </button>
 
                         </td>

@@ -20,6 +20,9 @@ function RegisterPhoto() {
   const [preview, setPreview] = useState(null);
   const [message, setMessage] = useState("");
 
+  // SEARCH
+  const [search, setSearch] = useState("");
+
   // =====================================
   // LOAD ALL REGISTER RECORDS
   // =====================================
@@ -44,6 +47,17 @@ function RegisterPhoto() {
   const myRecords = records.filter(
     (record) =>
       record.managerId === user?.managerId
+  );
+
+  // =====================================
+  // SEARCH FILTER
+  // =====================================
+
+  const filteredRecords = myRecords.filter(
+    (record) =>
+      record.date
+        .toLowerCase()
+        .includes(search.toLowerCase())
   );
 
   // =====================================
@@ -198,47 +212,6 @@ function RegisterPhoto() {
   };
 
   // =====================================
-  // DELETE
-  // =====================================
-
-  const handleDelete = (id) => {
-    const selectedRecord = records.find(
-      (record) => record.id === id
-    );
-
-    // Manager can delete only own record
-    if (
-      !selectedRecord ||
-      selectedRecord.managerId !==
-        user?.managerId
-    ) {
-      window.alert(
-        "या Register record वर तुम्हाला access नाही."
-      );
-      return;
-    }
-
-    const confirmDelete =
-      window.confirm(
-        "हा Register Photo record delete करायचा आहे का?"
-      );
-
-    if (!confirmDelete) return;
-
-    const updatedRecords =
-      records.filter(
-        (record) => record.id !== id
-      );
-
-    setRecords(updatedRecords);
-
-    localStorage.setItem(
-      "registerPhotoRecords",
-      JSON.stringify(updatedRecords)
-    );
-  };
-
-  // =====================================
   // VIEW PHOTO
   // =====================================
 
@@ -256,6 +229,42 @@ function RegisterPhoto() {
     window.alert(
       "Backend/R2 जोडल्यानंतर actual photo येथे उघडेल."
     );
+  };
+
+  // =====================================
+  // DOWNLOAD PHOTO
+  // =====================================
+
+  const handleDownloadPhoto = (record) => {
+    if (
+      record.managerId !==
+      user?.managerId
+    ) {
+      window.alert(
+        "या Register Photo वर तुम्हाला access नाही."
+      );
+      return;
+    }
+
+    if (record.photoUrl) {
+      const link =
+        document.createElement("a");
+
+      link.href = record.photoUrl;
+
+      link.download =
+        `register-photo-${record.date}.jpg`;
+
+      document.body.appendChild(link);
+
+      link.click();
+
+      document.body.removeChild(link);
+    } else {
+      window.alert(
+        "Actual photo download Spring Boot + R2 जोडल्यानंतर उपलब्ध होईल."
+      );
+    }
   };
 
   return (
@@ -551,13 +560,30 @@ function RegisterPhoto() {
 
             </div>
 
-            <div className="record-count">
-              {myRecords.length}
+            <div>
+
+              {/* SEARCH */}
+
+              <input
+                type="text"
+                placeholder="Search by date..."
+                value={search}
+                onChange={(event) =>
+                  setSearch(
+                    event.target.value
+                  )
+                }
+              />
+
+              <div className="record-count">
+                {filteredRecords.length}
+              </div>
+
             </div>
 
           </div>
 
-          {myRecords.length === 0 ? (
+          {filteredRecords.length === 0 ? (
 
             <div className="empty-register-records">
 
@@ -595,7 +621,7 @@ function RegisterPhoto() {
 
                 <tbody>
 
-                  {myRecords.map(
+                  {filteredRecords.map(
                     (record, index) => (
 
                       <tr key={record.id}>
@@ -636,14 +662,14 @@ function RegisterPhoto() {
 
                           <button
                             type="button"
-                            className="delete-register-button"
+                            className="view-front-button"
                             onClick={() =>
-                              handleDelete(
-                                record.id
+                              handleDownloadPhoto(
+                                record
                               )
                             }
                           >
-                            DELETE
+                            DOWNLOAD
                           </button>
 
                         </td>
