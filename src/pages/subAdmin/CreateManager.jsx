@@ -1,11 +1,18 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+
 import { useAuth } from "../../auth/useAuth";
+import { apiFetch } from "../../api/apiFetch";
+
 import "../../styles/forms.css";
 
 function CreateManager() {
   const navigate = useNavigate();
   const { user } = useAuth();
+
+  // =====================================
+  // FORM DATA
+  // =====================================
 
   const [formData, setFormData] = useState({
     managerName: "",
@@ -15,8 +22,17 @@ function CreateManager() {
     password: "",
   });
 
+  // =====================================
+  // STATES
+  // =====================================
+
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  // =====================================
+  // INPUT CHANGE
+  // =====================================
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -30,16 +46,32 @@ function CreateManager() {
     setMessage("");
   };
 
-  const handleSubmit = (event) => {
+  // =====================================
+  // CREATE MANAGER
+  // =====================================
+
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
-    // Logged-in Sub Admin check
-    if (!user || user.role !== "SUB_ADMIN" || !user.subAdminId) {
+    // -------------------------------------
+    // LOGGED-IN SUB ADMIN CHECK
+    // -------------------------------------
+
+    if (
+      !user ||
+      user.role !== "SUB_ADMIN" ||
+      !user.id
+    ) {
       setError(
         "Sub Admin login माहिती मिळाली नाही. कृपया पुन्हा login करा."
       );
+
       return;
     }
+
+    // -------------------------------------
+    // REQUIRED FIELDS
+    // -------------------------------------
 
     if (
       !formData.managerName.trim() ||
@@ -49,111 +81,152 @@ function CreateManager() {
       !formData.password
     ) {
       setError("कृपया सर्व माहिती भरा.");
+
       return;
     }
 
+    // -------------------------------------
+    // MOBILE VALIDATION
+    // -------------------------------------
+
     if (!/^[0-9]{10}$/.test(formData.mobile)) {
-      setError("Mobile Number 10 अंकी असावा.");
+      setError(
+        "Mobile Number 10 अंकी असावा."
+      );
+
       return;
     }
+
+    // -------------------------------------
+    // PASSWORD VALIDATION
+    // -------------------------------------
 
     if (formData.password.length < 6) {
       setError(
         "Password कमीत कमी 6 characters असावा."
       );
+
       return;
     }
 
-    const existingManagers =
-      JSON.parse(localStorage.getItem("managers")) || [];
+    try {
+      setLoading(true);
+      setError("");
+      setMessage("");
 
-    // Manager ID पूर्ण system मध्ये unique
-    const managerIdExists = existingManagers.some(
-      (manager) =>
-        manager.managerId?.toLowerCase() ===
-        formData.managerId.trim().toLowerCase()
-    );
+      // =====================================
+      // BACKEND API
+      // apiFetch automatically sends JWT
+      // =====================================
 
-    if (managerIdExists) {
-      setError(
-        "हा Manager ID आधीपासून अस्तित्वात आहे."
+      const response = await apiFetch(
+        "/api/users/managers",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json",
+          },
+
+          body: JSON.stringify({
+            managerName:
+              formData.managerName.trim(),
+
+            managerId:
+              formData.managerId
+                .trim()
+                .toUpperCase(),
+
+            mobile:
+              formData.mobile.trim(),
+
+            email:
+              formData.email
+                .trim()
+                .toLowerCase(),
+
+            password:
+              formData.password,
+
+            // Logged-in Sub Admin
+            // PostgreSQL database ID
+            createdBySubAdminId: user.id,
+          }),
+        }
       );
-      return;
-    }
 
-    // Email पूर्ण system मध्ये unique
-    const emailExists = existingManagers.some(
-      (manager) =>
-        manager.email?.toLowerCase() ===
-        formData.email.trim().toLowerCase()
-    );
+      // =====================================
+      // BACKEND ERROR
+      // =====================================
 
-    if (emailExists) {
-      setError(
-        "या Email वर Manager आधीपासून अस्तित्वात आहे."
+      if (!response.ok) {
+        const errorMessage =
+          await response.text();
+
+        throw new Error(
+          errorMessage ||
+            "Manager तयार करता आला नाही."
+        );
+      }
+
+      // =====================================
+      // SUCCESS RESPONSE
+      // =====================================
+
+      const data = await response.json();
+
+      setMessage(
+        `Manager ${
+          data.managerName ||
+          formData.managerName
+        } यशस्वीरीत्या तयार झाला.`
       );
-      return;
+
+      // =====================================
+      // CLEAR FORM
+      // =====================================
+
+      setFormData({
+        managerName: "",
+        managerId: "",
+        mobile: "",
+        email: "",
+        password: "",
+      });
+    } catch (err) {
+      console.error(
+        "Create Manager Error:",
+        err
+      );
+
+      if (err.message === "Failed to fetch") {
+        setError(
+          "Backend server connect होत नाही."
+        );
+      } else {
+        setError(
+          err.message ||
+            "Manager तयार करताना error आला."
+        );
+      }
+    } finally {
+      setLoading(false);
     }
-
-    const newManager = {
-      id: Date.now(),
-
-      managerName: formData.managerName.trim(),
-
-      managerId: formData.managerId
-        .trim()
-        .toUpperCase(),
-
-      mobile: formData.mobile.trim(),
-
-      email: formData.email
-        .trim()
-        .toLowerCase(),
-
-      // Frontend mock testing only
-      // Production मध्ये password backend वर hash होईल
-      password: formData.password,
-
-      role: "MANAGER",
-
-      // IMPORTANT:
-      // Manager logged-in Sub Admin शी जोडला जातो
-      createdBySubAdminId: user.subAdminId,
-
-      status: "ACTIVE",
-
-      createdAt: new Date().toISOString(),
-    };
-
-    const updatedManagers = [
-      ...existingManagers,
-      newManager,
-    ];
-
-    localStorage.setItem(
-      "managers",
-      JSON.stringify(updatedManagers)
-    );
-
-    setMessage(
-      `Manager ${newManager.managerName} यशस्वीरीत्या तयार झाला.`
-    );
-
-    setFormData({
-      managerName: "",
-      managerId: "",
-      mobile: "",
-      email: "",
-      password: "",
-    });
   };
+
+  // =====================================
+  // UI
+  // =====================================
 
   return (
     <div className="create-manager-page">
 
       <div className="create-manager-container">
 
-        {/* BACK */}
+        {/* =================================
+            BACK BUTTON
+        ================================= */}
+
         <button
           type="button"
           className="manager-back-button"
@@ -164,7 +237,10 @@ function CreateManager() {
           ← BACK TO DASHBOARD
         </button>
 
-        {/* HEADING */}
+        {/* =================================
+            HEADING
+        ================================= */}
+
         <div className="create-manager-heading">
 
           <div className="manager-heading-icon">
@@ -172,6 +248,7 @@ function CreateManager() {
           </div>
 
           <div>
+
             <span>
               SUB ADMIN MANAGEMENT
             </span>
@@ -183,11 +260,15 @@ function CreateManager() {
             <p>
               नवीन Manager account तयार करा
             </p>
+
           </div>
 
         </div>
 
-        {/* LOGGED IN SUB ADMIN */}
+        {/* =================================
+            CREATED UNDER
+        ================================= */}
+
         <div className="manager-created-by">
 
           <small>
@@ -199,16 +280,23 @@ function CreateManager() {
           </strong>
 
           <span>
-            {user?.subAdminId || ""}
+            {user?.subAdminId ||
+              user?.userId ||
+              ""}
           </span>
 
         </div>
 
-        {/* FORM */}
+        {/* =================================
+            FORM
+        ================================= */}
+
         <form
           className="create-manager-form"
           onSubmit={handleSubmit}
         >
+
+          {/* MANAGER NAME */}
 
           <div className="manager-form-group">
 
@@ -222,9 +310,12 @@ function CreateManager() {
               value={formData.managerName}
               onChange={handleChange}
               placeholder="Ex: Sangam"
+              autoComplete="off"
             />
 
           </div>
+
+          {/* MANAGER ID */}
 
           <div className="manager-form-group">
 
@@ -238,9 +329,12 @@ function CreateManager() {
               value={formData.managerId}
               onChange={handleChange}
               placeholder="Ex: MGR-002"
+              autoComplete="off"
             />
 
           </div>
+
+          {/* MOBILE NUMBER */}
 
           <div className="manager-two-column">
 
@@ -257,13 +351,15 @@ function CreateManager() {
                 onChange={handleChange}
                 placeholder="10-digit number"
                 maxLength="10"
+                inputMode="numeric"
+                autoComplete="off"
               />
 
             </div>
 
-            
-
           </div>
+
+          {/* EMAIL */}
 
           <div className="manager-form-group">
 
@@ -277,9 +373,12 @@ function CreateManager() {
               value={formData.email}
               onChange={handleChange}
               placeholder="manager@example.com"
+              autoComplete="off"
             />
 
           </div>
+
+          {/* PASSWORD */}
 
           <div className="manager-form-group">
 
@@ -293,9 +392,12 @@ function CreateManager() {
               value={formData.password}
               onChange={handleChange}
               placeholder="Minimum 6 characters"
+              autoComplete="new-password"
             />
 
           </div>
+
+          {/* ERROR */}
 
           {error && (
             <div className="manager-form-error">
@@ -303,17 +405,24 @@ function CreateManager() {
             </div>
           )}
 
+          {/* SUCCESS */}
+
           {message && (
             <div className="manager-form-success">
               ✓ {message}
             </div>
           )}
 
+          {/* SUBMIT */}
+
           <button
             type="submit"
             className="create-manager-submit"
+            disabled={loading}
           >
-            CREATE MANAGER
+            {loading
+              ? "CREATING..."
+              : "CREATE MANAGER"}
           </button>
 
         </form>

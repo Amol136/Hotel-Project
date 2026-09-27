@@ -1,87 +1,419 @@
-import { useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
 import { useNavigate } from "react-router-dom";
+
+import { useAuth } from "../../auth/useAuth";
+import { apiFetch } from "../../api/apiFetch";
+
 import "../../styles/tables.css";
 
 function SubAdminList() {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
-  const [search, setSearch] = useState("");
-  const [editingSubAdmin, setEditingSubAdmin] = useState(null);
+  // =====================================
+  // LOGGED-IN MAIN ADMIN
+  // =====================================
 
-  const [subAdmins, setSubAdmins] = useState(() => {
-    return JSON.parse(localStorage.getItem("subAdmins")) || [];
-  });
+  const mainAdminId = user?.id;
 
-  const saveSubAdmins = (updated) => {
-    setSubAdmins(updated);
+  // =====================================
+  // STATES
+  // =====================================
 
-    localStorage.setItem(
-      "subAdmins",
-      JSON.stringify(updated)
-    );
-  };
+  const [search, setSearch] =
+    useState("");
+
+  const [
+    editingSubAdmin,
+    setEditingSubAdmin,
+  ] = useState(null);
+
+  const [subAdmins, setSubAdmins] =
+    useState([]);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [error, setError] =
+    useState("");
+
+  const [message, setMessage] =
+    useState("");
+
+  const [saving, setSaving] =
+    useState(false);
+
+  // =====================================
+  // LOAD SUB ADMINS
+  // PostgreSQL + JWT
+  // =====================================
+
+  useEffect(() => {
+    if (
+      !mainAdminId ||
+      user?.role !== "MAIN_ADMIN"
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchSubAdmins =
+      async () => {
+        try {
+          const response =
+            await apiFetch(
+              "/api/users/sub-admins"
+            );
+
+          if (!response.ok) {
+            const errorMessage =
+              await response.text();
+
+            throw new Error(
+              errorMessage ||
+                "Sub Admin list load करता आली नाही."
+            );
+          }
+
+          const data =
+            await response.json();
+
+          if (cancelled) {
+            return;
+          }
+
+          setSubAdmins(
+            Array.isArray(data)
+              ? data
+              : []
+          );
+
+          setError("");
+        } catch (err) {
+          console.error(
+            "Load Sub Admin Error:",
+            err
+          );
+
+          if (!cancelled) {
+            if (
+              err.message ===
+              "Failed to fetch"
+            ) {
+              setError(
+                "Backend server connect होत नाही."
+              );
+            } else {
+              setError(
+                err.message ||
+                  "Sub Admin list load करता आली नाही."
+              );
+            }
+          }
+        } finally {
+          if (!cancelled) {
+            setLoading(false);
+          }
+        }
+      };
+
+    fetchSubAdmins();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    mainAdminId,
+    user?.role,
+  ]);
 
   // =====================================
   // SEARCH
   // =====================================
 
-  const filteredSubAdmins = useMemo(() => {
-    const text = search.toLowerCase().trim();
+  const filteredSubAdmins =
+    useMemo(() => {
+      const text =
+        search
+          .toLowerCase()
+          .trim();
 
-    if (!text) return subAdmins;
+      if (!text) {
+        return subAdmins;
+      }
 
-    return subAdmins.filter(
+      return subAdmins.filter(
+        (item) => {
+          const name =
+            String(
+              item.name || ""
+            ).toLowerCase();
+
+          const subAdminId =
+            String(
+              item.subAdminId ||
+                item.userId ||
+                ""
+            ).toLowerCase();
+
+          const mobile =
+            String(
+              item.mobile || ""
+            ).toLowerCase();
+
+          const email =
+            String(
+              item.email || ""
+            ).toLowerCase();
+
+          return (
+            name.includes(text) ||
+            subAdminId.includes(text) ||
+            mobile.includes(text) ||
+            email.includes(text)
+          );
+        }
+      );
+    }, [
+      search,
+      subAdmins,
+    ]);
+
+  // =====================================
+  // DELETE SUB ADMIN
+  // =====================================
+
+  const handleDelete =
+    async (id) => {
+      const confirmed =
+        window.confirm(
+          "हा Sub Admin delete करायचा आहे का?"
+        );
+
+      if (!confirmed) {
+        return;
+      }
+
+      try {
+        setError("");
+        setMessage("");
+
+        const response =
+          await apiFetch(
+            `/api/users/sub-admins/${id}`,
+            {
+              method: "DELETE",
+            }
+          );
+
+        if (!response.ok) {
+          const errorMessage =
+            await response.text();
+
+          throw new Error(
+            errorMessage ||
+              "Sub Admin delete करता आला नाही."
+          );
+        }
+
+        setSubAdmins((prev) =>
+          prev.filter(
+            (item) =>
+              item.id !== id
+          )
+        );
+
+        setMessage(
+          "Sub Admin यशस्वीरीत्या delete झाला."
+        );
+      } catch (err) {
+        console.error(
+          "Delete Sub Admin Error:",
+          err
+        );
+
+        if (
+          err.message ===
+          "Failed to fetch"
+        ) {
+          setError(
+            "Backend server connect होत नाही."
+          );
+        } else {
+          setError(
+            err.message ||
+              "Sub Admin delete करता आला नाही."
+          );
+        }
+      }
+    };
+
+  // =====================================
+  // EDIT / UPDATE SUB ADMIN
+  // =====================================
+
+  const handleEditSave =
+    async (event) => {
+      event.preventDefault();
+
+      if (!editingSubAdmin) {
+        return;
+      }
+
+      // =================================
+      // VALIDATION
+      // =================================
+
+      if (
+        !editingSubAdmin.name?.trim() ||
+        !editingSubAdmin.subAdminId?.trim() ||
+        !editingSubAdmin.mobile?.trim() ||
+        !editingSubAdmin.email?.trim()
+      ) {
+        setError(
+          "कृपया सर्व माहिती भरा."
+        );
+
+        return;
+      }
+
+      if (
+        !/^[0-9]{10}$/.test(
+          editingSubAdmin.mobile
+        )
+      ) {
+        setError(
+          "Mobile Number 10 अंकी असावा."
+        );
+
+        return;
+      }
+
+      try {
+        setSaving(true);
+        setError("");
+        setMessage("");
+
+        const response =
+          await apiFetch(
+            `/api/users/sub-admins/${editingSubAdmin.id}`,
+            {
+              method: "PUT",
+
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+
+              body: JSON.stringify({
+                name:
+                  editingSubAdmin.name.trim(),
+
+                subAdminId:
+                  editingSubAdmin.subAdminId
+                    .trim()
+                    .toUpperCase(),
+
+                mobile:
+                  editingSubAdmin.mobile.trim(),
+
+                email:
+                  editingSubAdmin.email
+                    .trim()
+                    .toLowerCase(),
+
+                // Existing password change
+                // करायचा नाही.
+                password: "",
+              }),
+            }
+          );
+
+        if (!response.ok) {
+          const errorMessage =
+            await response.text();
+
+          throw new Error(
+            errorMessage ||
+              "Sub Admin update करता आला नाही."
+          );
+        }
+
+        const updatedSubAdmin =
+          await response.json();
+
+        setSubAdmins((prev) =>
+          prev.map((item) =>
+            item.id ===
+            updatedSubAdmin.id
+              ? updatedSubAdmin
+              : item
+          )
+        );
+
+        setEditingSubAdmin(null);
+
+        setMessage(
+          "Sub Admin यशस्वीरीत्या update झाला."
+        );
+      } catch (err) {
+        console.error(
+          "Update Sub Admin Error:",
+          err
+        );
+
+        if (
+          err.message ===
+          "Failed to fetch"
+        ) {
+          setError(
+            "Backend server connect होत नाही."
+          );
+        } else {
+          setError(
+            err.message ||
+              "Sub Admin update करता आला नाही."
+          );
+        }
+      } finally {
+        setSaving(false);
+      }
+    };
+
+  // =====================================
+  // SUMMARY
+  // =====================================
+
+  const activeCount =
+    subAdmins.filter(
       (item) =>
-        item.name?.toLowerCase().includes(text) ||
-        item.subAdminId?.toLowerCase().includes(text) ||
-        item.mobile?.includes(text) ||
-        item.email?.toLowerCase().includes(text)
-    );
-  }, [search, subAdmins]);
+        item.status ===
+        "ACTIVE"
+    ).length;
 
-  
-  // =====================================
-  // DELETE
-  // =====================================
-
-  const handleDelete = (id) => {
-    const confirmed = window.confirm(
-      "हा Sub Admin delete करायचा आहे का?"
-    );
-
-    if (!confirmed) return;
-
-    const updated = subAdmins.filter(
-      (item) => item.id !== id
-    );
-
-    saveSubAdmins(updated);
-  };
+  const inactiveCount =
+    subAdmins.filter(
+      (item) =>
+        item.status ===
+        "INACTIVE"
+    ).length;
 
   // =====================================
-  // EDIT SAVE
+  // PAGE
   // =====================================
-
-  const handleEditSave = (event) => {
-    event.preventDefault();
-
-    const updated = subAdmins.map((item) =>
-      item.id === editingSubAdmin.id
-        ? editingSubAdmin
-        : item
-    );
-
-    saveSubAdmins(updated);
-
-    setEditingSubAdmin(null);
-  };
 
   return (
     <div className="main-subadmin-list-page">
 
-      {/* =====================================
+      {/* =========================
           HEADER
-      ===================================== */}
+      ========================= */}
 
       <header className="main-subadmin-list-header">
 
@@ -104,6 +436,7 @@ function SubAdminList() {
         <div className="main-subadmin-header-actions">
 
           <button
+            type="button"
             className="main-add-subadmin"
             onClick={() =>
               navigate(
@@ -115,6 +448,7 @@ function SubAdminList() {
           </button>
 
           <button
+            type="button"
             className="main-back-dashboard"
             onClick={() =>
               navigate(
@@ -131,9 +465,9 @@ function SubAdminList() {
 
       <main className="main-subadmin-list-container">
 
-        {/* =====================================
+        {/* =========================
             SUMMARY
-        ===================================== */}
+        ========================= */}
 
         <section className="main-subadmin-summary">
 
@@ -156,12 +490,7 @@ function SubAdminList() {
             </small>
 
             <strong>
-              {
-                subAdmins.filter(
-                  (item) =>
-                    item.status === "ACTIVE"
-                ).length
-              }
+              {activeCount}
             </strong>
 
           </div>
@@ -173,21 +502,32 @@ function SubAdminList() {
             </small>
 
             <strong>
-              {
-                subAdmins.filter(
-                  (item) =>
-                    item.status === "INACTIVE"
-                ).length
-              }
+              {inactiveCount}
             </strong>
 
           </div>
 
         </section>
 
-        {/* =====================================
-            SEARCH TOOLBAR
-        ===================================== */}
+        {/* =========================
+            MESSAGES
+        ========================= */}
+
+        {error && (
+          <div className="subadmin-form-error">
+            {error}
+          </div>
+        )}
+
+        {message && (
+          <div className="subadmin-form-success">
+            ✓ {message}
+          </div>
+        )}
+
+        {/* =========================
+            SEARCH
+        ========================= */}
 
         <section className="main-subadmin-toolbar">
 
@@ -198,7 +538,8 @@ function SubAdminList() {
             </h2>
 
             <p>
-              Name, ID, Mobile किंवा Email ने search करा
+              Name, ID, Mobile किंवा Email ने
+              search करा
             </p>
 
           </div>
@@ -207,20 +548,33 @@ function SubAdminList() {
             type="text"
             placeholder="Search Sub Admin..."
             value={search}
-            onChange={(e) =>
-              setSearch(e.target.value)
+            onChange={(event) =>
+              setSearch(
+                event.target.value
+              )
             }
           />
 
         </section>
 
-        {/* =====================================
+        {/* =========================
             TABLE
-        ===================================== */}
+        ========================= */}
 
         <section className="main-subadmin-table-card">
 
-          {filteredSubAdmins.length === 0 ? (
+          {loading ? (
+
+            <div className="main-subadmin-empty">
+
+              <h3>
+                Loading Sub Admins...
+              </h3>
+
+            </div>
+
+          ) : filteredSubAdmins.length ===
+            0 ? (
 
             <div className="main-subadmin-empty">
 
@@ -249,18 +603,29 @@ function SubAdminList() {
 
                   <tr>
 
-                    <th>SR.</th>
+                    <th>
+                      SR.
+                    </th>
 
-                    <th>SUB ADMIN</th>
+                    <th>
+                      SUB ADMIN
+                    </th>
 
-                    <th>SUB ADMIN ID</th>
+                    <th>
+                      SUB ADMIN ID
+                    </th>
 
-                    <th>MOBILE</th>
+                    <th>
+                      MOBILE
+                    </th>
 
-                    <th>EMAIL</th>
+                    <th>
+                      EMAIL
+                    </th>
 
-
-                    <th>ACTION</th>
+                    <th>
+                      ACTION
+                    </th>
 
                   </tr>
 
@@ -269,9 +634,15 @@ function SubAdminList() {
                 <tbody>
 
                   {filteredSubAdmins.map(
-                    (item, index) => (
-
-                      <tr key={item.id}>
+                    (
+                      item,
+                      index
+                    ) => (
+                      <tr
+                        key={
+                          item.id
+                        }
+                      >
 
                         {/* SR */}
 
@@ -287,8 +658,9 @@ function SubAdminList() {
 
                             <div className="main-subadmin-avatar">
 
-                              {item.name
-                                ?.charAt(0)
+                              {(item.name ||
+                                "S")
+                                .charAt(0)
                                 .toUpperCase()}
 
                             </div>
@@ -306,7 +678,11 @@ function SubAdminList() {
                         <td>
 
                           <span className="main-subadmin-id">
-                            {item.subAdminId}
+
+                            {item.subAdminId ||
+                              item.userId ||
+                              "-"}
+
                           </span>
 
                         </td>
@@ -314,18 +690,17 @@ function SubAdminList() {
                         {/* MOBILE */}
 
                         <td>
-                          {item.mobile}
+                          {item.mobile ||
+                            "-"}
                         </td>
 
                         {/* EMAIL */}
 
                         <td>
-                          {item.email}
+                          {item.email ||
+                            "-"}
                         </td>
 
-                        {/* STATUS */}
-
-                        
                         {/* ACTION */}
 
                         <td>
@@ -333,20 +708,32 @@ function SubAdminList() {
                           <div className="main-subadmin-actions">
 
                             <button
+                              type="button"
                               className="main-subadmin-edit"
-                              onClick={() =>
+                              onClick={() => {
+                                setError("");
+                                setMessage("");
+
                                 setEditingSubAdmin({
                                   ...item,
-                                })
-                              }
+
+                                  subAdminId:
+                                    item.subAdminId ||
+                                    item.userId ||
+                                    "",
+                                });
+                              }}
                             >
                               EDIT
                             </button>
 
                             <button
+                              type="button"
                               className="main-subadmin-delete"
                               onClick={() =>
-                                handleDelete(item.id)
+                                handleDelete(
+                                  item.id
+                                )
                               }
                             >
                               DELETE
@@ -357,7 +744,6 @@ function SubAdminList() {
                         </td>
 
                       </tr>
-
                     )
                   )}
 
@@ -373,15 +759,19 @@ function SubAdminList() {
 
       </main>
 
-      {/* =====================================
+      {/* =========================
           EDIT MODAL
-      ===================================== */}
+      ========================= */}
 
       {editingSubAdmin && (
 
         <div className="main-subadmin-modal-overlay">
 
           <div className="main-subadmin-modal">
+
+            {/* =====================
+                MODAL HEADER
+            ===================== */}
 
             <div className="main-subadmin-modal-header">
 
@@ -398,8 +788,11 @@ function SubAdminList() {
               </div>
 
               <button
+                type="button"
                 onClick={() =>
-                  setEditingSubAdmin(null)
+                  setEditingSubAdmin(
+                    null
+                  )
                 }
               >
                 ×
@@ -407,7 +800,15 @@ function SubAdminList() {
 
             </div>
 
-            <form onSubmit={handleEditSave}>
+            {/* =====================
+                EDIT FORM
+            ===================== */}
+
+            <form
+              onSubmit={
+                handleEditSave
+              }
+            >
 
               {/* NAME */}
 
@@ -420,11 +821,15 @@ function SubAdminList() {
                 <input
                   type="text"
                   required
-                  value={editingSubAdmin.name}
-                  onChange={(e) =>
+                  value={
+                    editingSubAdmin.name
+                  }
+                  onChange={(event) =>
                     setEditingSubAdmin({
                       ...editingSubAdmin,
-                      name: e.target.value,
+
+                      name:
+                        event.target.value,
                     })
                   }
                 />
@@ -445,11 +850,12 @@ function SubAdminList() {
                   value={
                     editingSubAdmin.subAdminId
                   }
-                  onChange={(e) =>
+                  onChange={(event) =>
                     setEditingSubAdmin({
                       ...editingSubAdmin,
+
                       subAdminId:
-                        e.target.value,
+                        event.target.value,
                     })
                   }
                 />
@@ -468,11 +874,15 @@ function SubAdminList() {
                   type="text"
                   maxLength="10"
                   required
-                  value={editingSubAdmin.mobile}
-                  onChange={(e) =>
+                  value={
+                    editingSubAdmin.mobile
+                  }
+                  onChange={(event) =>
                     setEditingSubAdmin({
                       ...editingSubAdmin,
-                      mobile: e.target.value,
+
+                      mobile:
+                        event.target.value,
                     })
                   }
                 />
@@ -490,18 +900,24 @@ function SubAdminList() {
                 <input
                   type="email"
                   required
-                  value={editingSubAdmin.email}
-                  onChange={(e) =>
+                  value={
+                    editingSubAdmin.email
+                  }
+                  onChange={(event) =>
                     setEditingSubAdmin({
                       ...editingSubAdmin,
-                      email: e.target.value,
+
+                      email:
+                        event.target.value,
                     })
                   }
                 />
 
               </div>
 
-              {/* ACTIONS */}
+              {/* =====================
+                  MODAL BUTTONS
+              ===================== */}
 
               <div className="main-subadmin-modal-actions">
 
@@ -509,7 +925,9 @@ function SubAdminList() {
                   type="button"
                   className="main-subadmin-cancel"
                   onClick={() =>
-                    setEditingSubAdmin(null)
+                    setEditingSubAdmin(
+                      null
+                    )
                   }
                 >
                   CANCEL
@@ -518,8 +936,11 @@ function SubAdminList() {
                 <button
                   type="submit"
                   className="main-subadmin-save"
+                  disabled={saving}
                 >
-                  SAVE CHANGES
+                  {saving
+                    ? "SAVING..."
+                    : "SAVE CHANGES"}
                 </button>
 
               </div>

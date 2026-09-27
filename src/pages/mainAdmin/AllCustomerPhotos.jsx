@@ -1,327 +1,775 @@
-import { useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../auth/useAuth";
+import { apiFetch } from "../../api/apiFetch";
+
 import "../../styles/tables.css";
 
 function AllCustomerPhotos() {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
-  // =========================
-  // SEARCH FILTERS
-  // =========================
-  const [searchDate, setSearchDate] = useState("");
-  const [searchSubAdmin, setSearchSubAdmin] = useState("");
-  const [searchManager, setSearchManager] = useState("");
-  const [statusFilter, setStatusFilter] = useState("ALL");
+  // =====================================
+  // LOGGED-IN MAIN ADMIN
+  // =====================================
 
-  // =========================
-  // LOCAL STORAGE DATA
-  // =========================
-  const [records] = useState(() => {
-    return JSON.parse(localStorage.getItem("customerRecords")) || [];
-  });
+  const mainAdminId = user?.id;
 
-  const [managers] = useState(() => {
-    return JSON.parse(localStorage.getItem("managers")) || [];
-  });
+  // =====================================
+  // DATA
+  // =====================================
 
-  const [subAdmins] = useState(() => {
-    return JSON.parse(localStorage.getItem("subAdmins")) || [];
-  });
+  const [records, setRecords] = useState([]);
+  const [managers, setManagers] = useState([]);
+  const [subAdmins, setSubAdmins] = useState([]);
 
-  // =========================
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  // =====================================
+  // SEARCH
+  // =====================================
+
+  const [searchDate, setSearchDate] =
+    useState("");
+
+  const [
+    searchSubAdmin,
+    setSearchSubAdmin,
+  ] = useState("");
+
+  const [
+    searchManager,
+    setSearchManager,
+  ] = useState("");
+
+  // =====================================
+  // PHOTO VIEWER
+  // =====================================
+
+  const [viewerOpen, setViewerOpen] =
+    useState(false);
+
+  const [viewerUrl, setViewerUrl] =
+    useState("");
+
+  const [
+    viewerDownloadUrl,
+    setViewerDownloadUrl,
+  ] = useState("");
+
+  const [viewerTitle, setViewerTitle] =
+    useState("");
+
+  const [viewerLoading, setViewerLoading] =
+    useState(false);
+
+  // =====================================
+  // LOAD DATA
+  // =====================================
+
+  useEffect(() => {
+    if (
+      !mainAdminId ||
+      user?.role !== "MAIN_ADMIN"
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const [
+          recordsResponse,
+          subAdminsResponse,
+          managersResponse,
+        ] = await Promise.all([
+          apiFetch(
+            `/api/customer-ids/main-admin/${mainAdminId}`
+          ),
+
+          apiFetch(
+            "/api/users/sub-admins"
+          ),
+
+          apiFetch(
+            "/api/users/managers"
+          ),
+        ]);
+
+        if (!recordsResponse.ok) {
+          const message =
+            await recordsResponse.text();
+
+          throw new Error(
+            message ||
+              "Customer ID records load झाले नाहीत."
+          );
+        }
+
+        if (!subAdminsResponse.ok) {
+          const message =
+            await subAdminsResponse.text();
+
+          throw new Error(
+            message ||
+              "Sub Admin list load झाली नाही."
+          );
+        }
+
+        if (!managersResponse.ok) {
+          const message =
+            await managersResponse.text();
+
+          throw new Error(
+            message ||
+              "Manager list load झाली नाही."
+          );
+        }
+
+        const recordsData =
+          await recordsResponse.json();
+
+        const subAdminsData =
+          await subAdminsResponse.json();
+
+        const managersData =
+          await managersResponse.json();
+
+        if (cancelled) {
+          return;
+        }
+
+        setRecords(
+          Array.isArray(recordsData)
+            ? recordsData
+            : []
+        );
+
+        setSubAdmins(
+          Array.isArray(subAdminsData)
+            ? subAdminsData
+            : []
+        );
+
+        setManagers(
+          Array.isArray(managersData)
+            ? managersData
+            : []
+        );
+      } catch (err) {
+        console.error(
+          "All Customer Photos Load Error:",
+          err
+        );
+
+        if (!cancelled) {
+          if (
+            err.message ===
+            "Failed to fetch"
+          ) {
+            setError(
+              "Backend server connect होत नाही."
+            );
+          } else {
+            setError(
+              err.message ||
+                "Data load करताना error आला."
+            );
+          }
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    mainAdminId,
+    user?.role,
+  ]);
+
+  // =====================================
   // GET MANAGER
-  // =========================
-  const getManager = (managerId) => {
+  // =====================================
+
+  const getManager = (
+    managerDatabaseId
+  ) => {
     return managers.find(
       (manager) =>
-        manager.managerId?.toLowerCase() ===
-        managerId?.toLowerCase()
+        Number(manager.id) ===
+        Number(managerDatabaseId)
     );
   };
 
-  // =========================
+  // =====================================
   // GET SUB ADMIN
-  // =========================
-  const getSubAdmin = (manager) => {
-    if (!manager) return null;
+  // =====================================
 
+  const getSubAdmin = (
+    subAdminDatabaseId
+  ) => {
     return subAdmins.find(
       (subAdmin) =>
-        subAdmin.subAdminId?.toLowerCase() ===
-        manager.createdBySubAdminId?.toLowerCase()
+        Number(subAdmin.id) ===
+        Number(subAdminDatabaseId)
     );
   };
 
-  // =========================
+  // =====================================
   // FILTER RECORDS
-  // =========================
-  const filteredRecords = records.filter((record) => {
-    const manager = getManager(record.managerId);
-    const subAdmin = getSubAdmin(manager);
+  // STATUS FILTER REMOVED
+  // =====================================
 
-    const dateText = searchDate.trim().toLowerCase();
-    const subAdminText = searchSubAdmin.trim().toLowerCase();
-    const managerText = searchManager.trim().toLowerCase();
+  const filteredRecords =
+    useMemo(() => {
+      return records.filter(
+        (record) => {
+          const manager =
+            managers.find(
+              (item) =>
+                Number(item.id) ===
+                Number(
+                  record.managerId
+                )
+            );
 
-    // SEARCH BY DATE
-    const matchesDate =
-      !dateText ||
-      record.date?.toLowerCase().includes(dateText);
+          const subAdmin =
+            subAdmins.find(
+              (item) =>
+                Number(item.id) ===
+                Number(
+                  record.subAdminId
+                )
+            );
 
-    // SEARCH BY SUB ADMIN
-    // Name किंवा Sub Admin ID दोन्ही search होतील
-    const matchesSubAdmin =
-      !subAdminText ||
-      subAdmin?.name?.toLowerCase().includes(subAdminText) ||
-      subAdmin?.subAdminId?.toLowerCase().includes(subAdminText);
+          const dateText =
+            searchDate
+              .trim()
+              .toLowerCase();
 
-    // SEARCH BY MANAGER
-    // Manager Name किंवा Manager ID दोन्ही search होतील
-    const matchesManager =
-      !managerText ||
-      manager?.managerName?.toLowerCase().includes(managerText) ||
-      record.managerId?.toLowerCase().includes(managerText);
+          const subAdminText =
+            searchSubAdmin
+              .trim()
+              .toLowerCase();
 
-    // STATUS FILTER
-    const matchesStatus =
-      statusFilter === "ALL" ||
-      record.status === statusFilter;
+          const managerText =
+            searchManager
+              .trim()
+              .toLowerCase();
 
-    return (
-      matchesDate &&
-      matchesSubAdmin &&
-      matchesManager &&
-      matchesStatus
-    );
-  });
+          // DATE
 
-  // =========================
-  // VIEW PHOTO
-  // =========================
-  const handleViewPhoto = (side) => {
-    alert(
-      `${side} Customer ID Photo Spring Boot + Cloudflare R2 जोडल्यानंतर येथे उघडेल.`
-    );
+          const matchesDate =
+            !dateText ||
+            String(
+              record.date || ""
+            )
+              .toLowerCase()
+              .includes(dateText);
+
+          // SUB ADMIN
+
+          const subAdminName =
+            String(
+              subAdmin?.name ||
+                subAdmin?.subAdminName ||
+                ""
+            ).toLowerCase();
+
+          const subAdminUserId =
+            String(
+              subAdmin?.subAdminId ||
+                subAdmin?.userId ||
+                ""
+            ).toLowerCase();
+
+          const matchesSubAdmin =
+            !subAdminText ||
+            subAdminName.includes(
+              subAdminText
+            ) ||
+            subAdminUserId.includes(
+              subAdminText
+            );
+
+          // MANAGER
+
+          const managerName =
+            String(
+              manager?.name ||
+                manager?.managerName ||
+                ""
+            ).toLowerCase();
+
+          const managerUserId =
+            String(
+              manager?.userId ||
+                manager?.managerId ||
+                ""
+            ).toLowerCase();
+
+          const matchesManager =
+            !managerText ||
+            managerName.includes(
+              managerText
+            ) ||
+            managerUserId.includes(
+              managerText
+            );
+
+          return (
+            matchesDate &&
+            matchesSubAdmin &&
+            matchesManager
+          );
+        }
+      );
+    }, [
+      records,
+      managers,
+      subAdmins,
+      searchDate,
+      searchSubAdmin,
+      searchManager,
+    ]);
+
+  // =====================================
+  // OPEN PHOTO VIEWER
+  // FRONT / BACK
+  // =====================================
+
+  const openPhotoViewer = async (
+    recordId,
+    side
+  ) => {
+    try {
+      if (!mainAdminId) {
+        throw new Error(
+          "Main Admin login माहिती मिळाली नाही."
+        );
+      }
+
+      setViewerLoading(true);
+      setError("");
+
+      const isFront =
+        side === "front";
+
+      const viewEndpoint =
+        isFront
+          ? `/api/customer-ids/${recordId}/main-admin-front-url?mainAdminId=${mainAdminId}`
+          : `/api/customer-ids/${recordId}/main-admin-back-url?mainAdminId=${mainAdminId}`;
+
+      const downloadEndpoint =
+        isFront
+          ? `/api/customer-ids/${recordId}/main-admin-front-download-url?mainAdminId=${mainAdminId}`
+          : `/api/customer-ids/${recordId}/main-admin-back-download-url?mainAdminId=${mainAdminId}`;
+
+      const [
+        viewResponse,
+        downloadResponse,
+      ] = await Promise.all([
+        apiFetch(viewEndpoint),
+        apiFetch(downloadEndpoint),
+      ]);
+
+      if (!viewResponse.ok) {
+        const message =
+          await viewResponse.text();
+
+        throw new Error(
+          message ||
+            "Photo open झाली नाही."
+        );
+      }
+
+      if (!downloadResponse.ok) {
+        const message =
+          await downloadResponse.text();
+
+        throw new Error(
+          message ||
+            "Download URL मिळाली नाही."
+        );
+      }
+
+      const viewData =
+        await viewResponse.json();
+
+      const downloadData =
+        await downloadResponse.json();
+
+      if (!viewData?.url) {
+        throw new Error(
+          "Photo URL मिळाली नाही."
+        );
+      }
+
+      setViewerUrl(
+        viewData.url
+      );
+
+      setViewerDownloadUrl(
+        downloadData?.url || ""
+      );
+
+      setViewerTitle(
+        isFront
+          ? "Customer ID - Front Photo"
+          : "Customer ID - Back Photo"
+      );
+
+      setViewerOpen(true);
+    } catch (err) {
+      console.error(
+        "Photo Viewer Error:",
+        err
+      );
+
+      window.alert(
+        err.message ||
+          "Photo open करताना error आला."
+      );
+    } finally {
+      setViewerLoading(false);
+    }
   };
+
+  // =====================================
+  // CLOSE VIEWER
+  // =====================================
+
+  const closeViewer = () => {
+    setViewerOpen(false);
+
+    setViewerUrl("");
+    setViewerDownloadUrl("");
+    setViewerTitle("");
+  };
+
+  // =====================================
+  // DOWNLOAD FROM VIEWER
+  // =====================================
+
+  const downloadViewerPhoto = () => {
+    if (!viewerDownloadUrl) {
+      return;
+    }
+
+    window.location.href =
+      viewerDownloadUrl;
+  };
+
+  // =====================================
+  // LOADING
+  // =====================================
+
+  if (loading) {
+    return (
+      <div className="all-customer-page">
+        <div className="all-customer-empty">
+          <h3>
+            Loading Customer Records...
+          </h3>
+        </div>
+      </div>
+    );
+  }
+
+  // =====================================
+  // PAGE
+  // =====================================
 
   return (
     <div className="all-customer-page">
 
-      {/* ================= HEADER ================= */}
+      {/* =================================
+          HEADER
+      ================================= */}
 
       <header className="all-customer-header">
-
         <div>
-          <span>MAIN ADMIN / CUSTOMER RECORDS</span>
+          <span>
+            MAIN ADMIN / CUSTOMER RECORDS
+          </span>
 
-          <h1>All Customer ID Photos</h1>
+          <h1>
+            All Customer ID Photos
+          </h1>
 
           <p>
-            सर्व Managers ने Upload केलेले Customer ID records
+            सर्व Managers ने Upload केलेले
+            Customer ID records
           </p>
         </div>
 
         <button
+          type="button"
           onClick={() =>
-            navigate("/main-admin/dashboard")
+            navigate(
+              "/main-admin/dashboard"
+            )
           }
         >
           ← DASHBOARD
         </button>
-
       </header>
 
       <main className="all-customer-container">
 
-        {/* ================= SUMMARY ================= */}
+        {/* =================================
+            ERROR
+        ================================= */}
+
+        {error && (
+          <div
+            style={{
+              marginBottom: "16px",
+              padding: "12px",
+              borderRadius: "8px",
+              background: "#ffe5e5",
+              color: "#a40000",
+            }}
+          >
+            {error}
+          </div>
+        )}
+
+        {/* =================================
+            SUMMARY
+            STATUS CARDS REMOVED
+        ================================= */}
 
         <section className="all-customer-summary">
-
           <div>
-            <small>TOTAL RECORDS</small>
-            <strong>{records.length}</strong>
-          </div>
-
-          <div className="customer-verified-card">
-            <small>VERIFIED</small>
+            <small>
+              TOTAL RECORDS
+            </small>
 
             <strong>
-              {
-                records.filter(
-                  (record) =>
-                    record.status === "VERIFIED"
-                ).length
-              }
-            </strong>
-          </div>
-
-          <div className="customer-pending-card">
-            <small>PENDING</small>
-
-            <strong>
-              {
-                records.filter(
-                  (record) =>
-                    record.status === "PENDING"
-                ).length
-              }
+              {records.length}
             </strong>
           </div>
 
           <div className="customer-manager-card">
-            <small>MANAGERS</small>
-            <strong>{managers.length}</strong>
-          </div>
+            <small>
+              MANAGERS
+            </small>
 
+            <strong>
+              {managers.length}
+            </strong>
+          </div>
         </section>
 
-        {/* ================= TOOLBAR ================= */}
+        {/* =================================
+            TOOLBAR
+        ================================= */}
 
         <section className="all-customer-toolbar">
-
           <div>
-            <h2>Customer ID Records</h2>
+            <h2>
+              Customer ID Records
+            </h2>
 
             <p>
-              Date, Sub Admin आणि Manager नुसार search करा
+              Date, Sub Admin आणि Manager
+              नुसार search करा
             </p>
           </div>
-
         </section>
 
-        {/* ================= SEARCH FILTERS ================= */}
+        {/* =================================
+            SEARCH FILTERS
+            STATUS REMOVED
+        ================================= */}
 
         <section className="customer-search-filters">
 
-          {/* SEARCH BY DATE */}
+          {/* DATE */}
 
           <div className="customer-filter-field">
-            <label>SEARCH BY DATE</label>
+            <label>
+              SEARCH BY DATE
+            </label>
 
             <input
               type="date"
               value={searchDate}
               onChange={(event) =>
-                setSearchDate(event.target.value)
+                setSearchDate(
+                  event.target.value
+                )
               }
             />
           </div>
 
-          {/* SEARCH BY SUB ADMIN */}
+          {/* SUB ADMIN */}
 
           <div className="customer-filter-field">
-            <label>SEARCH BY SUB ADMIN</label>
+            <label>
+              SEARCH BY SUB ADMIN
+            </label>
 
             <input
               type="text"
               placeholder="Sub Admin name or ID..."
               value={searchSubAdmin}
               onChange={(event) =>
-                setSearchSubAdmin(event.target.value)
+                setSearchSubAdmin(
+                  event.target.value
+                )
               }
             />
           </div>
 
-          {/* SEARCH BY MANAGER */}
+          {/* MANAGER */}
 
           <div className="customer-filter-field">
-            <label>SEARCH BY MANAGER</label>
+            <label>
+              SEARCH BY MANAGER
+            </label>
 
             <input
               type="text"
               placeholder="Manager name or ID..."
               value={searchManager}
               onChange={(event) =>
-                setSearchManager(event.target.value)
+                setSearchManager(
+                  event.target.value
+                )
               }
             />
           </div>
 
-          {/* STATUS */}
-
-          <div className="customer-filter-field">
-            <label>STATUS</label>
-
-            <select
-              value={statusFilter}
-              onChange={(event) =>
-                setStatusFilter(event.target.value)
-              }
-            >
-              <option value="ALL">
-                All Status
-              </option>
-
-              <option value="VERIFIED">
-                Verified
-              </option>
-
-              <option value="PENDING">
-                Pending
-              </option>
-
-              <option value="REJECTED">
-                Rejected
-              </option>
-            </select>
-          </div>
-
         </section>
 
-        {/* ================= TABLE ================= */}
+        {/* =================================
+            TABLE
+        ================================= */}
 
         <section className="all-customer-table-card">
 
           {filteredRecords.length === 0 ? (
-
             <div className="all-customer-empty">
+              <div>
+                🪪
+              </div>
 
-              <div>🪪</div>
-
-              <h3>Customer ID Record नाही</h3>
+              <h3>
+                Customer ID Record नाही
+              </h3>
 
               <p>
-                Search/filter प्रमाणे Customer ID record सापडला नाही.
+                Search प्रमाणे Customer ID
+                record सापडला नाही.
               </p>
-
             </div>
-
           ) : (
-
             <div className="all-customer-table-wrapper">
 
               <table className="all-customer-table">
 
                 <thead>
                   <tr>
-                    <th>SR.</th>
-                    <th>DATE</th>
-                    <th>MANAGER</th>
-                    <th>SUB ADMIN</th>
-                    <th>PROPERTY</th>
-                    <th>FRONT PHOTO</th>
-                    <th>BACK PHOTO</th>
-                    <th>STATUS</th>
+                    <th>
+                      SR.
+                    </th>
+
+                    <th>
+                      DATE
+                    </th>
+
+                    <th>
+                      MANAGER
+                    </th>
+
+                    <th>
+                      SUB ADMIN
+                    </th>
+
+                    <th>
+                      FRONT PHOTO
+                    </th>
+
+                    <th>
+                      BACK PHOTO
+                    </th>
                   </tr>
                 </thead>
 
                 <tbody>
-
                   {filteredRecords.map(
-                    (record, index) => {
+                    (
+                      record,
+                      index
+                    ) => {
 
                       const manager =
-                        getManager(record.managerId);
+                        getManager(
+                          record.managerId
+                        );
 
                       const subAdmin =
-                        getSubAdmin(manager);
+                        getSubAdmin(
+                          record.subAdminId
+                        );
+
+                      // MANAGER
+
+                      const managerName =
+                        manager?.name ||
+                        manager?.managerName ||
+                        "Manager";
+
+                      const managerUserId =
+                        manager?.userId ||
+                        manager?.managerId ||
+                        `DB-${record.managerId}`;
+
+                      // SUB ADMIN
+
+                      const subAdminName =
+                        subAdmin?.name ||
+                        subAdmin?.subAdminName ||
+                        "Sub Admin";
+
+                      const subAdminUserId =
+                        subAdmin?.subAdminId ||
+                        subAdmin?.userId ||
+                        `DB-${record.subAdminId}`;
 
                       return (
-                        <tr key={record.id}>
+                        <tr
+                          key={
+                            record.id
+                          }
+                        >
+
+                          {/* SR */}
 
                           <td>
                             {index + 1}
                           </td>
+
+                          {/* DATE */}
 
                           <td>
                             <strong>
@@ -332,110 +780,261 @@ function AllCustomerPhotos() {
                           {/* MANAGER */}
 
                           <td>
-
                             <div className="customer-manager-info">
 
                               <div className="customer-manager-avatar">
-
-                                {(manager?.managerName || "M")
+                                {managerName
                                   .charAt(0)
                                   .toUpperCase()}
-
                               </div>
 
                               <div>
-
                                 <strong>
-                                  {manager?.managerName ||
-                                    "Manager"}
+                                  {managerName}
                                 </strong>
 
-                                <small>
-                                  {record.managerId || "-"}
-                                </small>
+                                <br />
 
+                                <small>
+                                  {managerUserId}
+                                </small>
                               </div>
 
                             </div>
-
                           </td>
 
                           {/* SUB ADMIN */}
 
                           <td>
-                            {subAdmin?.name || "-"}
+                            <div>
+                              <strong>
+                                {subAdminName}
+                              </strong>
+
+                              <br />
+
+                              <small>
+                                {subAdminUserId}
+                              </small>
+                            </div>
                           </td>
 
-                          {/* PROPERTY */}
+                          {/* FRONT PHOTO */}
 
                           <td>
-                            <strong>
-                              {subAdmin?.propertyName || "-"}
-                            </strong>
-                          </td>
-
-                          {/* FRONT */}
-
-                          <td>
-
                             <button
+                              type="button"
                               className="customer-front-view"
+                              disabled={
+                                viewerLoading
+                              }
                               onClick={() =>
-                                handleViewPhoto("Front")
+                                openPhotoViewer(
+                                  record.id,
+                                  "front"
+                                )
                               }
                             >
-                              📷 FRONT
+                              👁 VIEW FRONT
                             </button>
-
                           </td>
 
-                          {/* BACK */}
+                          {/* BACK PHOTO */}
 
                           <td>
-
                             <button
+                              type="button"
                               className="customer-back-view"
+                              disabled={
+                                viewerLoading
+                              }
                               onClick={() =>
-                                handleViewPhoto("Back")
+                                openPhotoViewer(
+                                  record.id,
+                                  "back"
+                                )
                               }
                             >
-                              📷 BACK
+                              👁 VIEW BACK
                             </button>
-
-                          </td>
-
-                          {/* STATUS */}
-
-                          <td>
-
-                            <span
-                              className={
-                                record.status === "VERIFIED"
-                                  ? "customer-main-status verified"
-                                  : "customer-main-status pending"
-                              }
-                            >
-                              {record.status || "PENDING"}
-                            </span>
-
                           </td>
 
                         </tr>
                       );
                     }
                   )}
-
                 </tbody>
 
               </table>
 
             </div>
-
           )}
 
         </section>
 
       </main>
+
+      {/* =================================
+          PHOTO VIEWER
+      ================================= */}
+
+      {viewerOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background:
+              "rgba(0,0,0,0.88)",
+            zIndex: 10000,
+
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+
+            padding: "16px",
+          }}
+        >
+
+          <div
+            style={{
+              width:
+                "min(900px, 100%)",
+
+              maxHeight: "95vh",
+              overflowY: "auto",
+
+              background: "#ffffff",
+              borderRadius: "16px",
+
+              padding: "20px",
+            }}
+          >
+
+            {/* VIEWER HEADER */}
+
+            <div
+              style={{
+                display: "flex",
+
+                justifyContent:
+                  "space-between",
+
+                alignItems: "center",
+
+                gap: "12px",
+
+                marginBottom: "16px",
+              }}
+            >
+
+              <h2
+                style={{
+                  margin: 0,
+                }}
+              >
+                {viewerTitle}
+              </h2>
+
+              <button
+                type="button"
+                onClick={
+                  closeViewer
+                }
+                style={{
+                  fontSize: "20px",
+                  cursor: "pointer",
+                }}
+              >
+                ✕
+              </button>
+
+            </div>
+
+            {/* PHOTO */}
+
+            <div
+              style={{
+                width: "100%",
+
+                minHeight: "300px",
+
+                background: "#f5f5f5",
+
+                borderRadius: "12px",
+
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+
+                overflow: "hidden",
+              }}
+            >
+
+              <img
+                src={viewerUrl}
+                alt={viewerTitle}
+                style={{
+                  display: "block",
+
+                  width: "100%",
+
+                  maxHeight: "68vh",
+
+                  objectFit: "contain",
+                }}
+              />
+
+            </div>
+
+            {/* VIEWER BUTTONS */}
+
+            <div
+              style={{
+                display: "flex",
+
+                justifyContent:
+                  "center",
+
+                alignItems: "center",
+
+                gap: "12px",
+
+                flexWrap: "wrap",
+
+                marginTop: "18px",
+              }}
+            >
+
+              {/* DOWNLOAD आता फक्त
+                  photo viewer मध्ये आहे */}
+
+              {viewerDownloadUrl && (
+                <button
+                  type="button"
+                  className="customer-front-view"
+                  onClick={
+                    downloadViewerPhoto
+                  }
+                >
+                  ⬇ DOWNLOAD PHOTO
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={
+                  closeViewer
+                }
+              >
+                CLOSE
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+      )}
 
     </div>
   );
