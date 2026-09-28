@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/useAuth";
+import { apiFetch } from "../../api/apiFetch";
 import "../../styles/forms.css";
 
 function AdminLogin() {
@@ -20,14 +21,10 @@ function AdminLogin() {
     setLoading(true);
 
     try {
-      const response = await fetch(
-        "http://localhost:8080/api/auth/login",
+      const response = await apiFetch(
+        "/api/auth/login",
         {
           method: "POST",
-
-          headers: {
-            "Content-Type": "application/json",
-          },
 
           body: JSON.stringify({
             email: email.trim().toLowerCase(),
@@ -85,7 +82,7 @@ function AdminLogin() {
 
       if (err.message === "Failed to fetch") {
         setError(
-          "Backend server is not running. Please start the backend."
+          "Backend serverशी connection होऊ शकले नाही."
         );
       } else {
         setError(

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/useAuth";
+import { apiFetch } from "../../api/apiFetch";
 import "../../styles/forms.css";
 
 function ManagerLogin() {
@@ -9,15 +10,9 @@ function ManagerLogin() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] =
-    useState(false);
-
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
-  // ==========================================
-  // MANAGER LOGIN USING SPRING BOOT + JWT
-  // ==========================================
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -26,14 +21,10 @@ function ManagerLogin() {
     setLoading(true);
 
     try {
-      const response = await fetch(
-        "http://localhost:8080/api/auth/login",
+      const response = await apiFetch(
+        "/api/auth/login",
         {
           method: "POST",
-
-          headers: {
-            "Content-Type": "application/json",
-          },
 
           body: JSON.stringify({
             email: email.trim().toLowerCase(),
@@ -53,21 +44,13 @@ function ManagerLogin() {
 
       const data = await response.json();
 
-      // ======================================
-      // ROLE CHECK
-      // ======================================
-
+      // Only Manager can login from this page
       if (data.role !== "MANAGER") {
         setError(
           "This login is only for Manager."
         );
-
         return;
       }
-
-      // ======================================
-      // JWT TOKEN CHECK
-      // ======================================
 
       if (!data.token) {
         throw new Error(
@@ -75,36 +58,23 @@ function ManagerLogin() {
         );
       }
 
-      // ======================================
-      // SAVE USER + JWT IN AUTH CONTEXT
-      // ======================================
-
       login({
-        // PostgreSQL Manager database ID
         id: data.id,
 
-        // Example: MGR-001
         managerId: data.userId,
 
-        // Keep backend userId also
         userId: data.userId,
 
         name: data.name,
 
         email: data.email,
 
-        // PostgreSQL parent Sub Admin ID
         subAdminId: data.createdBySubAdminId,
 
         role: data.role,
 
-        // JWT TOKEN
         token: data.token,
       });
-
-      // ======================================
-      // MANAGER DASHBOARD
-      // ======================================
 
       navigate(
         "/manager/dashboard",
@@ -121,7 +91,7 @@ function ManagerLogin() {
 
       if (error.message === "Failed to fetch") {
         setError(
-          "Backend server is not running."
+          "Backend serverशी connection होऊ शकले नाही."
         );
       } else {
         setError(
@@ -154,8 +124,6 @@ function ManagerLogin() {
 
         <form onSubmit={handleSubmit}>
 
-          {/* EMAIL */}
-
           <div className="role-login-group">
 
             <label>
@@ -174,8 +142,6 @@ function ManagerLogin() {
             />
 
           </div>
-
-          {/* PASSWORD */}
 
           <div className="role-login-group">
 
@@ -223,15 +189,11 @@ function ManagerLogin() {
 
           </div>
 
-          {/* ERROR */}
-
           {error && (
             <div className="role-login-error">
               {error}
             </div>
           )}
-
-          {/* LOGIN BUTTON */}
 
           <button
             type="submit"

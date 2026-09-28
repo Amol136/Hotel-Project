@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/useAuth";
+import { apiFetch } from "../../api/apiFetch";
 import "../../styles/forms.css";
 
 function SubAdminLogin() {
@@ -20,14 +21,10 @@ function SubAdminLogin() {
     setLoading(true);
 
     try {
-      const response = await fetch(
-        "http://localhost:8080/api/auth/login",
+      const response = await apiFetch(
+        "/api/auth/login",
         {
           method: "POST",
-
-          headers: {
-            "Content-Type": "application/json",
-          },
 
           body: JSON.stringify({
             email: email.trim().toLowerCase(),
@@ -54,26 +51,25 @@ function SubAdminLogin() {
         return;
       }
 
-      // JWT token must be present
       if (!data.token) {
         throw new Error(
           "Authentication token मिळाला नाही."
         );
       }
 
-      // Save Sub Admin + JWT token
       login({
         id: data.id,
 
-        // Backend userId = Frontend subAdminId
         subAdminId: data.userId,
 
         userId: data.userId,
+
         name: data.name,
+
         email: data.email,
+
         role: data.role,
 
-        // JWT
         token: data.token,
       });
 
@@ -83,6 +79,7 @@ function SubAdminLogin() {
           replace: true,
         }
       );
+
     } catch (err) {
       console.error(
         "Sub Admin login error:",
@@ -91,7 +88,7 @@ function SubAdminLogin() {
 
       if (err.message === "Failed to fetch") {
         setError(
-          "Backend server is not running."
+          "Backend serverशी connection होऊ शकले नाही."
         );
       } else {
         setError(
@@ -99,6 +96,7 @@ function SubAdminLogin() {
             "Invalid Email ID or Password."
         );
       }
+
     } finally {
       setLoading(false);
     }
@@ -113,7 +111,9 @@ function SubAdminLogin() {
           SUB ADMIN
         </div>
 
-        <h1>SUB ADMIN LOGIN</h1>
+        <h1>
+          SUB ADMIN LOGIN
+        </h1>
 
         <p>
           Enter your Email ID and Password.
@@ -123,7 +123,9 @@ function SubAdminLogin() {
 
           <div className="role-login-group">
 
-            <label>EMAIL ID</label>
+            <label>
+              EMAIL ID
+            </label>
 
             <input
               type="email"
@@ -140,7 +142,9 @@ function SubAdminLogin() {
 
           <div className="role-login-group">
 
-            <label>PASSWORD</label>
+            <label>
+              PASSWORD
+            </label>
 
             <div className="password-input-wrapper">
 
