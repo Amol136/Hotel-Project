@@ -484,21 +484,50 @@ function CustomerId() {
        * करता येते.
        */
 
-      const sourceX =
-        (cropBox.x / 100) *
-        image.naturalWidth;
+      const displayedWidth = image.clientWidth;
+const displayedHeight = image.clientHeight;
 
-      const sourceY =
-        (cropBox.y / 100) *
-        image.naturalHeight;
+const naturalWidth = image.naturalWidth;
+const naturalHeight = image.naturalHeight;
 
-      const sourceWidth =
-        (cropBox.width / 100) *
-        image.naturalWidth;
+// object-fit: cover प्रमाणे image किती scale झाली ते काढा
+const coverScale = Math.max(
+  displayedWidth / naturalWidth,
+  displayedHeight / naturalHeight
+);
 
-      const sourceHeight =
-        (cropBox.height / 100) *
-        image.naturalHeight;
+const renderedWidth = naturalWidth * coverScale;
+const renderedHeight = naturalHeight * coverScale;
+
+// cover मुळे बाहेर गेलेला image portion
+const hiddenX = (renderedWidth - displayedWidth) / 2;
+const hiddenY = (renderedHeight - displayedHeight) / 2;
+
+// Grid selection displayed image pixels मध्ये
+const cropDisplayX =
+  (cropBox.x / 100) * displayedWidth;
+
+const cropDisplayY =
+  (cropBox.y / 100) * displayedHeight;
+
+const cropDisplayWidth =
+  (cropBox.width / 100) * displayedWidth;
+
+const cropDisplayHeight =
+  (cropBox.height / 100) * displayedHeight;
+
+// Display coordinates -> original image coordinates
+const sourceX =
+  (cropDisplayX + hiddenX) / coverScale;
+
+const sourceY =
+  (cropDisplayY + hiddenY) / coverScale;
+
+const sourceWidth =
+  cropDisplayWidth / coverScale;
+
+const sourceHeight =
+  cropDisplayHeight / coverScale;
 
       if (
         sourceWidth <= 0 ||
@@ -1603,22 +1632,22 @@ function CustomerId() {
                 {/* FULL PHOTO */}
 
                 <img
-                  ref={cropImageRef}
-                  src={cropSource}
-                  alt="Crop"
-                  draggable="false"
-                  style={{
-                    display: "block",
-                    maxWidth: "100%",
-                    width: "auto",
-                    height: "auto",
-                    maxHeight: "65vh",
-                    objectFit: "contain",
-                    userSelect: "none",
-                    pointerEvents: "none",
-                  }}
-                />
-
+  ref={cropImageRef}
+  src={cropSource}
+  alt="Crop"
+  draggable="false"
+  onDragStart={(event) => event.preventDefault()}
+  style={{
+    display: "block",
+    width: "100%",
+    height: "65vh",
+    objectFit: "cover",
+    objectPosition: "center",
+    userSelect: "none",
+    WebkitUserDrag: "none",
+    pointerEvents: "none",
+  }}
+/>
                 {/* =====================================
                     CROP SELECTION BOX
                 ===================================== */}
@@ -1630,7 +1659,7 @@ function CustomerId() {
                     top: `${cropBox.y}%`,
                     width: `${cropBox.width}%`,
                     height: `${cropBox.height}%`,
-                    border: "2px solid #ffffff",
+                    border: "2px dashed #ffffff",
                     boxSizing: "border-box",
                     cursor: "move",
                     touchAction: "none",

@@ -612,21 +612,53 @@ function RegisterPhoto() {
       }
 
       // Crop box percentage -> original photo pixels
-      const sourceX =
-        (cropBox.x / 100) *
-        naturalWidth;
+      const displayedWidth = image.clientWidth;
+const displayedHeight = image.clientHeight;
 
-      const sourceY =
-        (cropBox.y / 100) *
-        naturalHeight;
+// object-fit: cover scale
+const coverScale = Math.max(
+  displayedWidth / naturalWidth,
+  displayedHeight / naturalHeight
+);
 
-      const sourceWidth =
-        (cropBox.width / 100) *
-        naturalWidth;
+const renderedWidth =
+  naturalWidth * coverScale;
 
-      const sourceHeight =
-        (cropBox.height / 100) *
-        naturalHeight;
+const renderedHeight =
+  naturalHeight * coverScale;
+
+// cover मुळे image चा बाहेर गेलेला भाग
+const hiddenX =
+  (renderedWidth - displayedWidth) / 2;
+
+const hiddenY =
+  (renderedHeight - displayedHeight) / 2;
+
+// Crop box चे displayed pixels
+const cropDisplayX =
+  (cropBox.x / 100) * displayedWidth;
+
+const cropDisplayY =
+  (cropBox.y / 100) * displayedHeight;
+
+const cropDisplayWidth =
+  (cropBox.width / 100) * displayedWidth;
+
+const cropDisplayHeight =
+  (cropBox.height / 100) * displayedHeight;
+
+// Display coordinates -> original photo coordinates
+const sourceX =
+  (cropDisplayX + hiddenX) / coverScale;
+
+const sourceY =
+  (cropDisplayY + hiddenY) / coverScale;
+
+const sourceWidth =
+  cropDisplayWidth / coverScale;
+
+const sourceHeight =
+  cropDisplayHeight / coverScale;
 
       if (
         sourceWidth <= 0 ||
@@ -1756,22 +1788,22 @@ function RegisterPhoto() {
                 {/* FULL PHOTO */}
 
                 <img
-                  ref={cropImageRef}
-                  src={cropSource}
-                  alt="Register Crop"
-                  draggable="false"
-                  style={{
-                    display: "block",
-                    maxWidth: "100%",
-                    width: "auto",
-                    height: "auto",
-                    maxHeight: "65vh",
-                    objectFit: "contain",
-                    userSelect: "none",
-                    pointerEvents: "none",
-                  }}
-                />
-
+  ref={cropImageRef}
+  src={cropSource}
+  alt="Register Crop"
+  draggable="false"
+  onDragStart={(event) => event.preventDefault()}
+  style={{
+    display: "block",
+    width: "100%",
+    height: "65vh",
+    objectFit: "cover",
+    objectPosition: "center",
+    userSelect: "none",
+    WebkitUserDrag: "none",
+    pointerEvents: "none",
+  }}
+/>
                 {/* =====================================
                     MOVABLE CROP BOX
                 ===================================== */}
@@ -1783,7 +1815,7 @@ function RegisterPhoto() {
                     top: `${cropBox.y}%`,
                     width: `${cropBox.width}%`,
                     height: `${cropBox.height}%`,
-                    border: "2px solid #fff",
+                    border: "2px dashed #fff",
                     boxSizing: "border-box",
                     cursor: "move",
                     touchAction: "none",
