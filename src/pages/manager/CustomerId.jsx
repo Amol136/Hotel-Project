@@ -1,122 +1,96 @@
 import { useEffect, useRef, useState } from "react";
-
 import { useNavigate } from "react-router-dom";
-
 import { useAuth } from "../../auth/useAuth";
-
 import { apiFetch } from "../../api/apiFetch";
-
 import "../../styles/forms.css";
-
 import "../../styles/tables.css";
 
-
 function CustomerId() {
-
   const navigate = useNavigate();
-
   const { user } = useAuth();
 
-
   const frontCameraRef = useRef(null);
-
   const frontGalleryRef = useRef(null);
-
   const backCameraRef = useRef(null);
-
   const backGalleryRef = useRef(null);
 
-
   const cropImageRef = useRef(null);
-
-  // ==========================================
-  // CROP - NEW REFS
-  // ==========================================
-
   const cropAreaRef = useRef(null);
 
-  const dragStartRef = useRef(null);
-
+  // Crop box move / resize refs
+  const cropDragRef = useRef(null);
+  const cropResizeRef = useRef(null);
 
   const videoRef = useRef(null);
-
   const cameraStreamRef = useRef(null);
 
-
   const [cameraOpen, setCameraOpen] = useState(false);
-
   const [cameraSide, setCameraSide] = useState(null);
-
   const [cameraError, setCameraError] = useState("");
-
 
   const today = new Date().toISOString().split("T")[0];
 
-
   const [date, setDate] = useState(today);
 
-
   const [frontPhoto, setFrontPhoto] = useState(null);
-
   const [frontPreview, setFrontPreview] = useState(null);
 
-
   const [backPhoto, setBackPhoto] = useState(null);
-
   const [backPreview, setBackPreview] = useState(null);
 
-
   const [message, setMessage] = useState("");
-
   const [records, setRecords] = useState([]);
-
   const [loadingRecords, setLoadingRecords] = useState(false);
-
   const [uploading, setUploading] = useState(false);
-
-
-  // Search date.
-  // Blank असल्यास records पूर्ण hide राहतील.
 
   const [searchDate, setSearchDate] = useState("");
 
-
-  // Crop
+  // ==========================================
+  // CROP
+  // ==========================================
 
   const [cropOpen, setCropOpen] = useState(false);
-
   const [cropSource, setCropSource] = useState("");
-
   const [cropSide, setCropSide] = useState(null);
 
-
-  const [zoom, setZoom] = useState(1);
-
-  const [offsetX, setOffsetX] = useState(0);
-
-  const [offsetY, setOffsetY] = useState(0);
-
+  // Percentage based crop box.
+  // Full image remains visible.
+  const [cropBox, setCropBox] = useState({
+    x: 10,
+    y: 15,
+    width: 80,
+    height: 60,
+  });
 
   // Photo viewer
-
   const [viewerOpen, setViewerOpen] = useState(false);
-
   const [viewerUrl, setViewerUrl] = useState("");
-
   const [viewerDownloadUrl, setViewerDownloadUrl] =
     useState("");
-
   const [viewerTitle, setViewerTitle] = useState("");
 
+  // ==========================================
+  // RESET CROP
+  // ==========================================
+
+  const resetCropBox = () => {
+    setCropBox({
+      x: 10,
+      y: 15,
+      width: 80,
+      height: 60,
+    });
+
+    cropDragRef.current = null;
+    cropResizeRef.current = null;
+  };
 
   // ==========================================
   // LOAD RECORDS
   // ==========================================
 
   useEffect(() => {
-
     const loadRecords = async () => {
-
       if (
         !user ||
         user.role !== "MANAGER" ||
@@ -125,21 +99,15 @@ function CustomerId() {
         return;
       }
 
-
       try {
-
         setLoadingRecords(true);
-
 
         const response = await apiFetch(
           `/api/customer-ids/manager/${user.id}`
         );
 
-
         if (!response.ok) {
-
           const errorText = await response.text();
-
 
           throw new Error(
             errorText ||
@@ -147,39 +115,28 @@ function CustomerId() {
           );
         }
 
-
         const data = await response.json();
-
 
         setRecords(
           Array.isArray(data) ? data : []
         );
-
       } catch (error) {
-
         console.error(
           "Customer ID records error:",
           error
         );
 
-
         setMessage(
           error.message ||
             "Customer ID records load करताना error आला."
         );
-
       } finally {
-
         setLoadingRecords(false);
-
       }
     };
 
-
     loadRecords();
-
   }, [user]);
-
 
   // ==========================================
   // ONLY LOGGED-IN MANAGER RECORDS
@@ -191,10 +148,8 @@ function CustomerId() {
       Number(user?.id)
   );
 
-
   // ==========================================
   // DATE SEARCH
-  // No date = NO RECORDS
   // ==========================================
 
   const filteredRecords = searchDate
@@ -204,226 +159,145 @@ function CustomerId() {
       )
     : [];
 
-
   // ==========================================
   // LIVE CAMERA
   // ==========================================
 
   const stopCamera = () => {
-
     if (cameraStreamRef.current) {
-
       cameraStreamRef.current
         .getTracks()
         .forEach((track) => track.stop());
 
-
       cameraStreamRef.current = null;
     }
 
-
     if (videoRef.current) {
-
       videoRef.current.srcObject = null;
-
     }
 
-
     setCameraOpen(false);
-
     setCameraSide(null);
-
     setCameraError("");
-
   };
 
-
   const openCamera = async (side) => {
-
     try {
-
       setCameraError("");
-
       setMessage("");
-
 
       if (
         !navigator.mediaDevices ||
         !navigator.mediaDevices.getUserMedia
       ) {
-
         throw new Error(
           "या browser मध्ये Camera support उपलब्ध नाही."
         );
-
       }
 
-
-      // जुना camera stream असेल तर बंद करा.
-
       if (cameraStreamRef.current) {
-
         cameraStreamRef.current
           .getTracks()
           .forEach((track) => track.stop());
-
       }
 
-
       const constraints = {
-
         audio: false,
 
-
         video: {
-
           facingMode: {
             ideal: "environment",
           },
-
 
           width: {
             ideal: 1920,
           },
 
-
           height: {
             ideal: 1080,
           },
-
         },
-
       };
-
 
       const stream =
         await navigator.mediaDevices.getUserMedia(
           constraints
         );
 
-
       cameraStreamRef.current = stream;
 
-
       setCameraSide(side);
-
       setCameraOpen(true);
 
-
-      // Modal render होण्यासाठी थोडा वेळ.
-
       setTimeout(async () => {
-
         if (videoRef.current) {
-
           videoRef.current.srcObject = stream;
 
-
           try {
-
             await videoRef.current.play();
-
           } catch (error) {
-
             console.error(
               "Camera play error:",
               error
             );
-
           }
-
         }
-
       }, 100);
-
     } catch (error) {
-
       console.error(
         "Camera open error:",
         error
       );
 
-
       let errorMessage =
         "Camera सुरू करता आला नाही.";
 
-
-      if (
-        error.name === "NotAllowedError"
-      ) {
-
+      if (error.name === "NotAllowedError") {
         errorMessage =
           "Camera permission मिळाली नाही. Browser मध्ये Camera Allow करा.";
-
       }
 
-
-      if (
-        error.name === "NotFoundError"
-      ) {
-
+      if (error.name === "NotFoundError") {
         errorMessage =
           "या device वर Camera सापडला नाही.";
-
       }
 
-
-      if (
-        error.name === "NotReadableError"
-      ) {
-
+      if (error.name === "NotReadableError") {
         errorMessage =
           "Camera दुसऱ्या application मध्ये वापरला जात आहे.";
-
       }
 
-
       setCameraError(errorMessage);
-
       setMessage(errorMessage);
-
     }
-
   };
 
-
   const captureCameraPhoto = () => {
-
     const video = videoRef.current;
-
 
     if (!video) {
       return;
     }
 
-
     if (
       !video.videoWidth ||
       !video.videoHeight
     ) {
-
       setCameraError(
         "Camera तयार होत आहे. पुन्हा Capture करा."
       );
 
-
       return;
-
     }
-
 
     const canvas =
       document.createElement("canvas");
 
-
     canvas.width = video.videoWidth;
-
     canvas.height = video.videoHeight;
-
 
     const context =
       canvas.getContext("2d");
-
 
     context.drawImage(
       video,
@@ -433,121 +307,73 @@ function CustomerId() {
       canvas.height
     );
 
-
     const capturedImage =
       canvas.toDataURL(
         "image/jpeg",
         0.95
       );
 
-
-    const selectedSide =
-      cameraSide;
-
+    const selectedSide = cameraSide;
 
     stopCamera();
 
-
-    // Capture झाल्यावर थेट Crop screen.
-
     setCropSource(capturedImage);
-
     setCropSide(selectedSide);
 
-
-    setZoom(1);
-
-    setOffsetX(0);
-
-    setOffsetY(0);
-
+    resetCropBox();
 
     setCropOpen(true);
-
     setMessage("");
-
   };
 
-
-  // Component बंद झाल्यावर camera चालू राहू नये.
-
   useEffect(() => {
-
     return () => {
-
       if (cameraStreamRef.current) {
-
         cameraStreamRef.current
           .getTracks()
           .forEach((track) =>
             track.stop()
           );
-
       }
-
     };
-
   }, []);
-
 
   // ==========================================
   // FILE SELECT -> OPEN CROP
   // ==========================================
 
   const handlePhoto = (event, side) => {
-
     const file = event.target.files?.[0];
-
 
     if (!file) {
       return;
     }
 
-
     if (!file.type.startsWith("image/")) {
-
-      setMessage("कृपया फक्त फोटो निवडा.");
+      setMessage(
+        "कृपया फक्त फोटो निवडा."
+      );
 
       event.target.value = "";
-
       return;
-
     }
-
 
     const reader = new FileReader();
 
-
     reader.onload = () => {
-
       setCropSource(reader.result);
-
       setCropSide(side);
 
-
-      setZoom(1);
-
-      setOffsetX(0);
-
-      setOffsetY(0);
-
+      resetCropBox();
 
       setCropOpen(true);
-
       setMessage("");
-
     };
-
 
     reader.readAsDataURL(file);
 
-
-    // Same photo पुन्हा select करता यावा.
-
     event.target.value = "";
-
   };
-
 
   // ==========================================
   // COMPRESS CANVAS
@@ -558,9 +384,7 @@ function CustomerId() {
     canvas,
     maxBytes = 160 * 1024
   ) => {
-
     let quality = 0.9;
-
 
     let blob = await new Promise((resolve) =>
       canvas.toBlob(
@@ -570,15 +394,12 @@ function CustomerId() {
       )
     );
 
-
     while (
       blob &&
       blob.size > maxBytes &&
       quality > 0.3
     ) {
-
       quality -= 0.08;
-
 
       blob = await new Promise((resolve) =>
         canvas.toBlob(
@@ -587,38 +408,28 @@ function CustomerId() {
           quality
         )
       );
-
     }
 
-
-    // अजूनही मोठा असल्यास dimensions कमी करा.
-
     if (blob && blob.size > maxBytes) {
-
       const smallerCanvas =
         document.createElement("canvas");
-
 
       const scale = Math.sqrt(
         maxBytes / blob.size
       );
-
 
       smallerCanvas.width = Math.max(
         500,
         Math.floor(canvas.width * scale)
       );
 
-
       smallerCanvas.height = Math.max(
         300,
         Math.floor(canvas.height * scale)
       );
 
-
       const context =
         smallerCanvas.getContext("2d");
-
 
       context.drawImage(
         canvas,
@@ -628,7 +439,6 @@ function CustomerId() {
         smallerCanvas.height
       );
 
-
       blob = await new Promise((resolve) =>
         smallerCanvas.toBlob(
           resolve,
@@ -636,120 +446,134 @@ function CustomerId() {
           0.78
         )
       );
-
     }
 
-
     return blob;
-
   };
-
 
   // ==========================================
   // APPLY CROP
-  // फक्त हा भाग नवीन crop प्रमाणे बदलला आहे
+  // Only selected crop-box area is saved
   // ==========================================
 
   const applyCrop = async () => {
-
     const image = cropImageRef.current;
 
-    const cropArea = cropAreaRef.current;
-
-
-    if (!image || !cropArea) {
+    if (!image) {
       return;
     }
 
-
     try {
-
       setMessage(
         "फोटो Crop आणि Compress होत आहे..."
       );
 
+      if (
+        !image.naturalWidth ||
+        !image.naturalHeight
+      ) {
+        throw new Error(
+          "फोटो पूर्ण load झाला नाही."
+        );
+      }
+
+      /*
+       * cropBox percentage मध्ये आहे.
+       * त्यामुळे displayed image च्या percentage
+       * ला थेट natural image pixels मध्ये convert
+       * करता येते.
+       */
+
+      const sourceX =
+        (cropBox.x / 100) *
+        image.naturalWidth;
+
+      const sourceY =
+        (cropBox.y / 100) *
+        image.naturalHeight;
+
+      const sourceWidth =
+        (cropBox.width / 100) *
+        image.naturalWidth;
+
+      const sourceHeight =
+        (cropBox.height / 100) *
+        image.naturalHeight;
+
+      if (
+        sourceWidth <= 0 ||
+        sourceHeight <= 0
+      ) {
+        throw new Error(
+          "Crop area योग्य नाही."
+        );
+      }
+
+      /*
+       * Crop box free resize आहे.
+       * त्यामुळे फोटो stretch होऊ नये म्हणून
+       * crop चाच aspect ratio preserve करतो.
+       */
+
+      const maxOutputWidth = 1000;
+      const maxOutputHeight = 1000;
+
+      let outputWidth = Math.round(
+        sourceWidth
+      );
+
+      let outputHeight = Math.round(
+        sourceHeight
+      );
+
+      const outputScale = Math.min(
+        1,
+        maxOutputWidth / outputWidth,
+        maxOutputHeight / outputHeight
+      );
+
+      outputWidth = Math.max(
+        1,
+        Math.round(
+          outputWidth * outputScale
+        )
+      );
+
+      outputHeight = Math.max(
+        1,
+        Math.round(
+          outputHeight * outputScale
+        )
+      );
 
       const canvas =
         document.createElement("canvas");
 
-
-      // ID card friendly ratio
-
-      const outputWidth = 1000;
-
-      const outputHeight = 630;
-
-
       canvas.width = outputWidth;
-
       canvas.height = outputHeight;
-
 
       const context =
         canvas.getContext("2d");
 
-
-      const naturalWidth =
-        image.naturalWidth;
-
-
-      const naturalHeight =
-        image.naturalHeight;
-
-
-      // फोटो पूर्ण crop area COVER करेल.
-
-      const baseScale = Math.max(
-        outputWidth / naturalWidth,
-        outputHeight / naturalHeight
-      );
-
-
-      const finalScale =
-        baseScale * Number(zoom);
-
-
-      const drawWidth =
-        naturalWidth * finalScale;
-
-
-      const drawHeight =
-        naturalHeight * finalScale;
-
-
-      // Screen वरील drag position ला
-      // output canvas प्रमाणात convert करा.
-
-      const cropRect =
-        cropArea.getBoundingClientRect();
-
-
-      const scaleX =
-        outputWidth / cropRect.width;
-
-
-      const scaleY =
-        outputHeight / cropRect.height;
-
-
-      const x =
-        (outputWidth - drawWidth) / 2 +
-        Number(offsetX) * scaleX;
-
-
-      const y =
-        (outputHeight - drawHeight) / 2 +
-        Number(offsetY) * scaleY;
-
+      if (!context) {
+        throw new Error(
+          "फोटो तयार करता आला नाही."
+        );
+      }
 
       context.drawImage(
         image,
-        x,
-        y,
-        drawWidth,
-        drawHeight
-      );
 
+        sourceX,
+        sourceY,
+        sourceWidth,
+        sourceHeight,
+
+        0,
+        0,
+        outputWidth,
+        outputHeight
+      );
 
       const blob =
         await canvasToCompressedBlob(
@@ -757,279 +581,196 @@ function CustomerId() {
           160 * 1024
         );
 
-
       if (!blob) {
-
         throw new Error(
           "फोटो तयार करता आला नाही."
         );
-
       }
-
 
       const fileName =
         cropSide === "front"
           ? `customer-id-front-${Date.now()}.jpg`
           : `customer-id-back-${Date.now()}.jpg`;
 
-
-      const compressedFile = new File(
-        [blob],
-        fileName,
-        {
-          type: "image/jpeg",
-        }
-      );
-
+      const compressedFile =
+        new File(
+          [blob],
+          fileName,
+          {
+            type: "image/jpeg",
+          }
+        );
 
       const previewUrl =
         URL.createObjectURL(
           compressedFile
         );
 
-
       if (cropSide === "front") {
-
         if (frontPreview) {
-
           URL.revokeObjectURL(
             frontPreview
           );
-
         }
-
 
         setFrontPhoto(
           compressedFile
         );
 
-
         setFrontPreview(
           previewUrl
         );
-
       }
 
-
       if (cropSide === "back") {
-
         if (backPreview) {
-
           URL.revokeObjectURL(
             backPreview
           );
-
         }
-
 
         setBackPhoto(
           compressedFile
         );
 
-
         setBackPreview(
           previewUrl
         );
-
       }
 
-
       setCropOpen(false);
-
       setCropSource("");
-
       setCropSide(null);
 
-
-      setZoom(1);
-
-      setOffsetX(0);
-
-      setOffsetY(0);
-
-      dragStartRef.current = null;
-
+      resetCropBox();
 
       setMessage(
         `फोटो तयार झाला (${Math.ceil(
           blob.size / 1024
         )} KB)`
       );
-
     } catch (error) {
-
       console.error(
         "Crop error:",
         error
       );
 
-
       setMessage(
         error.message ||
           "फोटो Crop करताना error आला."
       );
-
     }
-
   };
-
 
   // ==========================================
   // REMOVE PHOTOS
   // ==========================================
 
   const removeFrontPhoto = () => {
-
     if (frontPreview) {
-
       URL.revokeObjectURL(
         frontPreview
       );
-
     }
-
 
     setFrontPhoto(null);
-
     setFrontPreview(null);
 
-
     if (frontCameraRef.current) {
-
       frontCameraRef.current.value = "";
-
     }
-
 
     if (frontGalleryRef.current) {
-
       frontGalleryRef.current.value = "";
-
     }
-
   };
 
-
   const removeBackPhoto = () => {
-
     if (backPreview) {
-
       URL.revokeObjectURL(
         backPreview
       );
-
     }
-
 
     setBackPhoto(null);
-
     setBackPreview(null);
 
-
     if (backCameraRef.current) {
-
       backCameraRef.current.value = "";
-
     }
-
 
     if (backGalleryRef.current) {
-
       backGalleryRef.current.value = "";
-
     }
-
   };
     // ==========================================
   // UPLOAD
   // ==========================================
 
   const handleUpload = async (event) => {
-
     event.preventDefault();
-
 
     if (
       !user ||
       user.role !== "MANAGER" ||
       !user.id
     ) {
-
       setMessage(
         "Manager login माहिती मिळाली नाही. कृपया पुन्हा login करा."
       );
-
       return;
     }
 
-
     if (!date) {
-
       setMessage(
         "कृपया तारीख निवडा."
       );
-
       return;
     }
 
-
     if (!frontPhoto) {
-
       setMessage(
         "कृपया ID ची समोरील बाजू निवडा आणि Crop करा."
       );
-
       return;
     }
 
-
     if (!backPhoto) {
-
       setMessage(
         "कृपया ID ची मागील बाजू निवडा आणि Crop करा."
       );
-
       return;
     }
 
-
     try {
-
       setUploading(true);
-
 
       setMessage(
         "फोटो Upload होत आहेत..."
       );
 
-
       const formData =
         new FormData();
-
 
       formData.append(
         "managerId",
         user.id
       );
 
-
       formData.append(
         "date",
         date
       );
-
 
       formData.append(
         "frontPhoto",
         frontPhoto
       );
 
-
       formData.append(
         "backPhoto",
         backPhoto
       );
-
 
       const response =
         await apiFetch(
@@ -1040,12 +781,9 @@ function CustomerId() {
           }
         );
 
-
       if (!response.ok) {
-
         const errorText =
           await response.text();
-
 
         throw new Error(
           errorText ||
@@ -1053,10 +791,8 @@ function CustomerId() {
         );
       }
 
-
       const savedRecord =
         await response.json();
-
 
       setRecords(
         (previousRecords) => [
@@ -1065,66 +801,49 @@ function CustomerId() {
         ]
       );
 
-
       setMessage(
         "Customer ID फोटो यशस्वीरीत्या Upload झाले."
       );
 
-
       removeFrontPhoto();
-
       removeBackPhoto();
-
     } catch (error) {
-
       console.error(
         "Customer ID Upload Error:",
         error
       );
 
-
       setMessage(
         error.message ||
           "Customer ID फोटो Upload करताना error आला."
       );
-
     } finally {
-
       setUploading(false);
-
     }
-
   };
-
 
   // ==========================================
   // PHOTO VIEWER
-  // Photo + Download button
   // ==========================================
 
   const openPhotoViewer = async (
     record,
     side
   ) => {
-
     try {
-
       setMessage(
         "फोटो उघडत आहे..."
       );
-
 
       const viewEndpoint =
         side === "front"
           ? `/api/customer-ids/${record.id}/front-url`
           : `/api/customer-ids/${record.id}/back-url`;
 
-
       const downloadEndpoint =
         side === "front"
           ? `/api/customer-ids/${record.id}/front-download-url`
           : `/api/customer-ids/${record.id}/back-download-url`;
-
 
       const [
         viewResponse,
@@ -1134,53 +853,39 @@ function CustomerId() {
         apiFetch(downloadEndpoint),
       ]);
 
-
       if (!viewResponse.ok) {
-
         throw new Error(
           side === "front"
             ? "Front Photo उघडता आला नाही."
             : "Back Photo उघडता आला नाही."
         );
-
       }
 
-
       if (!downloadResponse.ok) {
-
         throw new Error(
           "Download URL मिळाली नाही."
         );
-
       }
-
 
       const viewData =
         await viewResponse.json();
 
-
       const downloadData =
         await downloadResponse.json();
 
-
       if (!viewData.url) {
-
         throw new Error(
           "Photo URL मिळाली नाही."
         );
-
       }
-
 
       setViewerUrl(
         viewData.url
       );
 
-
       setViewerDownloadUrl(
         downloadData.url || ""
       );
-
 
       setViewerTitle(
         side === "front"
@@ -1188,64 +893,44 @@ function CustomerId() {
           : "मागील ID फोटो"
       );
 
-
       setViewerOpen(true);
-
       setMessage("");
-
     } catch (error) {
-
       console.error(
         "Photo viewer error:",
         error
       );
 
-
       setMessage(
         error.message ||
           "फोटो उघडता आला नाही."
       );
-
     }
-
   };
-
 
   const closeViewer = () => {
-
     setViewerOpen(false);
-
     setViewerUrl("");
-
     setViewerDownloadUrl("");
-
     setViewerTitle("");
-
   };
 
-
   return (
-
     <div className="customer-page">
 
       {/* HEADER */}
 
       <header className="customer-header">
-
         <div>
-
           <h2>
             Customer ID Management
           </h2>
-
 
           <p>
             ग्राहकाचे ID फोटो Crop,
             Compress आणि Upload करा
           </p>
-
         </div>
-
 
         <button
           type="button"
@@ -1258,84 +943,65 @@ function CustomerId() {
         >
           ← BACK TO DASHBOARD
         </button>
-
       </header>
-
 
       <main className="customer-container">
 
         {/* MANAGER INFO */}
 
         <section className="customer-manager-info">
-
           <div>
-
             <small>
               LOGGED IN MANAGER
             </small>
 
-
             <strong>
               {user?.name || "Manager"}
             </strong>
-
           </div>
 
-
           <div className="customer-manager-badges">
-
             <span>
               {user?.managerId || "-"}
             </span>
-
 
             <span>
               Sub Admin:{" "}
               {user?.subAdminId || "-"}
             </span>
-
           </div>
-
         </section>
 
-
-        {/* UPLOAD */}
+        {/* =====================================
+            UPLOAD SECTION
+        ===================================== */}
 
         <section className="customer-panel">
 
           <div className="panel-title">
-
             <div className="step-number">
               1
             </div>
 
-
             <div>
-
               <h2>
                 ग्राहक ID फोटो अपलोड करा
               </h2>
-
 
               <p>
                 Camera किंवा Gallery मधून
                 फोटो निवडा, Crop करा आणि
                 Upload करा.
               </p>
-
             </div>
-
           </div>
-
 
           <form onSubmit={handleUpload}>
 
             <div className="customer-form-group">
-
               <label>
                 तारीख
               </label>
-
 
               <input
                 type="date"
@@ -1346,39 +1012,32 @@ function CustomerId() {
                   )
                 }
               />
-
             </div>
-
 
             <div className="section-divider" />
 
-
             <div className="photo-section-title">
-
               <span className="step-number">
                 2
               </span>
 
-
               <h3>
                 फोटो अपलोड
               </h3>
-
             </div>
-
 
             <div className="photo-upload-grid">
 
-              {/* FRONT */}
+              {/* =====================================
+                  FRONT PHOTO
+              ===================================== */}
 
               <div className="photo-upload-card">
 
                 <div className="photo-card-heading">
-
                   <h3>
                     समोरील बाजू
                   </h3>
-
 
                   <span
                     className={
@@ -1394,19 +1053,15 @@ function CustomerId() {
                         )} KB`
                       : "PENDING"}
                   </span>
-
                 </div>
 
-
                 {frontPreview ? (
-
                   <div className="photo-preview">
 
                     <img
                       src={frontPreview}
                       alt="Front ID Preview"
                     />
-
 
                     <button
                       type="button"
@@ -1415,64 +1070,52 @@ function CustomerId() {
                         removeFrontPhoto
                       }
                     >
-                      ×
+                      ✕
                     </button>
 
                   </div>
-
                 ) : (
-
                   <div className="photo-placeholder">
-
-                    <div className="placeholder-icon">
-                      🪪
-                    </div>
-
+                    <span>
+                      📷
+                    </span>
 
                     <p>
-                      समोरील बाजूचा फोटो
-                      निवडा
+                      समोरील फोटो निवडा
                     </p>
-
                   </div>
-
                 )}
 
-
-                <div className="photo-buttons">
+                <div className="photo-action-buttons">
 
                   <button
                     type="button"
-                    className="camera-button"
                     onClick={() =>
                       openCamera("front")
                     }
                   >
-                    📷 कॅमेरा
+                    📷 CAMERA
                   </button>
-
 
                   <button
                     type="button"
-                    className="gallery-button"
                     onClick={() =>
                       frontGalleryRef.current?.click()
                     }
                   >
-                    🖼️ गॅलरी
+                    🖼 GALLERY
                   </button>
 
                 </div>
-
-
-                {/* CAMERA */}
 
                 <input
                   ref={frontCameraRef}
                   type="file"
                   accept="image/*"
                   capture="environment"
-                  hidden
+                  style={{
+                    display: "none",
+                  }}
                   onChange={(event) =>
                     handlePhoto(
                       event,
@@ -1481,14 +1124,13 @@ function CustomerId() {
                   }
                 />
 
-
-                {/* GALLERY */}
-
                 <input
                   ref={frontGalleryRef}
                   type="file"
                   accept="image/*"
-                  hidden
+                  style={{
+                    display: "none",
+                  }}
                   onChange={(event) =>
                     handlePhoto(
                       event,
@@ -1499,17 +1141,16 @@ function CustomerId() {
 
               </div>
 
-
-              {/* BACK */}
+              {/* =====================================
+                  BACK PHOTO
+              ===================================== */}
 
               <div className="photo-upload-card">
 
                 <div className="photo-card-heading">
-
                   <h3>
                     मागील बाजू
                   </h3>
-
 
                   <span
                     className={
@@ -1525,19 +1166,15 @@ function CustomerId() {
                         )} KB`
                       : "PENDING"}
                   </span>
-
                 </div>
 
-
                 {backPreview ? (
-
                   <div className="photo-preview">
 
                     <img
                       src={backPreview}
                       alt="Back ID Preview"
                     />
-
 
                     <button
                       type="button"
@@ -1546,62 +1183,52 @@ function CustomerId() {
                         removeBackPhoto
                       }
                     >
-                      ×
+                      ✕
                     </button>
 
                   </div>
-
                 ) : (
-
                   <div className="photo-placeholder">
-
-                    <div className="placeholder-icon">
-                      🪪
-                    </div>
-
+                    <span>
+                      📷
+                    </span>
 
                     <p>
-                      मागील बाजूचा फोटो
-                      निवडा
+                      मागील फोटो निवडा
                     </p>
-
                   </div>
-
                 )}
 
-
-                <div className="photo-buttons">
+                <div className="photo-action-buttons">
 
                   <button
                     type="button"
-                    className="camera-button"
                     onClick={() =>
                       openCamera("back")
                     }
                   >
-                    📷 कॅमेरा
+                    📷 CAMERA
                   </button>
-
 
                   <button
                     type="button"
-                    className="gallery-button"
                     onClick={() =>
                       backGalleryRef.current?.click()
                     }
                   >
-                    🖼️ गॅलरी
+                    🖼 GALLERY
                   </button>
 
                 </div>
-
 
                 <input
                   ref={backCameraRef}
                   type="file"
                   accept="image/*"
                   capture="environment"
-                  hidden
+                  style={{
+                    display: "none",
+                  }}
                   onChange={(event) =>
                     handlePhoto(
                       event,
@@ -1610,12 +1237,13 @@ function CustomerId() {
                   }
                 />
 
-
                 <input
                   ref={backGalleryRef}
                   type="file"
                   accept="image/*"
-                  hidden
+                  style={{
+                    display: "none",
+                  }}
                   onChange={(event) =>
                     handlePhoto(
                       event,
@@ -1628,15 +1256,11 @@ function CustomerId() {
 
             </div>
 
-
             {message && (
-
               <div className="customer-message">
                 {message}
               </div>
-
             )}
-
 
             <button
               type="submit"
@@ -1644,157 +1268,102 @@ function CustomerId() {
               disabled={uploading}
             >
               {uploading
-                ? "फोटो UPLOAD होत आहेत..."
-                : "फोटो UPLOAD करा"}
+                ? "UPLOADING..."
+                : "UPLOAD CUSTOMER ID"}
             </button>
 
           </form>
-
         </section>
 
-
         {/* =====================================
-            ग्राहक नोंद तपासणी
-            DATE SEARCH केल्यावरच records
+            RECORDS
         ===================================== */}
 
-        <section className="records-panel">
+        <section className="customer-panel">
 
-          <div className="records-heading">
+          <div className="panel-title">
+            <div className="step-number">
+              3
+            </div>
 
             <div>
-
               <h2>
-                ग्राहक नोंद तपासणी
+                Customer ID Records
               </h2>
 
-
               <p>
-                तारीख निवडल्यानंतरच त्या
-                दिवसाचे records दिसतील.
+                तारीख निवडून अपलोड केलेले
+                फोटो पहा.
               </p>
-
             </div>
-
-
-            <div>
-
-              <input
-                type="date"
-                value={searchDate}
-                onChange={(event) =>
-                  setSearchDate(
-                    event.target.value
-                  )
-                }
-              />
-
-            </div>
-
           </div>
 
+          <div className="customer-form-group">
+            <label>
+              तारीख शोधा
+            </label>
 
-          {/* DATE SELECT केलेली नाही */}
+            <input
+              type="date"
+              value={searchDate}
+              onChange={(event) =>
+                setSearchDate(
+                  event.target.value
+                )
+              }
+            />
+          </div>
 
-          {!searchDate ? (
-
-            <div className="customer-empty-records">
-
-              <div>
-                🔎
-              </div>
-
-
-              <h3>
-                तारीख निवडा
-              </h3>
-
-
-              <p>
-                Record पाहण्यासाठी वरून
-                तारीख Search करा.
-              </p>
-
+          {loadingRecords ? (
+            <div className="customer-message">
+              Records load होत आहेत...
             </div>
-
-          ) : loadingRecords ? (
-
-            <div className="customer-empty-records">
-
-              <div>
-                ⏳
-              </div>
-
-
-              <h3>
-                Records Loading...
-              </h3>
-
+          ) : !searchDate ? (
+            <div className="customer-message">
+              Records पाहण्यासाठी तारीख निवडा.
             </div>
-
           ) : filteredRecords.length === 0 ? (
-
-            <div className="customer-empty-records">
-
-              <div>
-                🪪
-              </div>
-
-
-              <h3>
-                या तारखेचा Record नाही
-              </h3>
-
-
-              <p>
-                निवडलेल्या तारखेला कोणताही
-                Customer ID record सापडला नाही.
-              </p>
-
+            <div className="customer-message">
+              या तारखेला कोणतेही records नाहीत.
             </div>
-
           ) : (
+            <div className="customer-table-wrapper">
 
-            <div className="records-table-wrapper">
-
-              <table className="records-table">
-
+              <table className="customer-table">
                 <thead>
-
                   <tr>
+                    <th>
+                      ID
+                    </th>
 
-                    <th>SR.</th>
+                    <th>
+                      Date
+                    </th>
 
-                    <th>DATE</th>
+                    <th>
+                      Front Photo
+                    </th>
 
-                    <th>FRONT PHOTO</th>
-
-                    <th>BACK PHOTO</th>
-
+                    <th>
+                      Back Photo
+                    </th>
                   </tr>
-
                 </thead>
 
-
                 <tbody>
-
                   {filteredRecords.map(
-                    (record, index) => (
-
+                    (record) => (
                       <tr key={record.id}>
 
                         <td>
-                          {index + 1}
+                          {record.id}
                         </td>
-
 
                         <td>
                           {record.date}
                         </td>
 
-
                         <td>
-
                           <button
                             type="button"
                             className="view-front-button"
@@ -1807,12 +1376,9 @@ function CustomerId() {
                           >
                             फोटो पहा
                           </button>
-
                         </td>
 
-
                         <td>
-
                           <button
                             type="button"
                             className="view-back-button"
@@ -1825,38 +1391,32 @@ function CustomerId() {
                           >
                             फोटो पहा
                           </button>
-
                         </td>
 
                       </tr>
-
                     )
                   )}
-
                 </tbody>
-
               </table>
 
             </div>
-
           )}
 
         </section>
 
       </main>
 
-
       {/* =====================================
           LIVE CAMERA MODAL
       ===================================== */}
 
       {cameraOpen && (
-
         <div
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0,0,0,0.92)",
+            background:
+              "rgba(0,0,0,0.92)",
             zIndex: 11000,
             display: "flex",
             alignItems: "center",
@@ -1864,10 +1424,10 @@ function CustomerId() {
             padding: "15px",
           }}
         >
-
           <div
             style={{
-              width: "min(760px, 100%)",
+              width:
+                "min(760px, 100%)",
               maxHeight: "95vh",
               overflowY: "auto",
               background: "#ffffff",
@@ -1879,12 +1439,12 @@ function CustomerId() {
             <div
               style={{
                 display: "flex",
-                justifyContent: "space-between",
+                justifyContent:
+                  "space-between",
                 alignItems: "center",
                 marginBottom: "12px",
               }}
             >
-
               <h2
                 style={{
                   margin: 0,
@@ -1895,16 +1455,13 @@ function CustomerId() {
                   : "मागील बाजूचा फोटो"}
               </h2>
 
-
               <button
                 type="button"
                 onClick={stopCamera}
               >
                 ✕
               </button>
-
             </div>
-
 
             <div
               style={{
@@ -1913,7 +1470,6 @@ function CustomerId() {
                 overflow: "hidden",
               }}
             >
-
               <video
                 ref={videoRef}
                 autoPlay
@@ -1926,12 +1482,9 @@ function CustomerId() {
                   display: "block",
                 }}
               />
-
             </div>
 
-
             {cameraError && (
-
               <div
                 className="customer-message"
                 style={{
@@ -1940,20 +1493,18 @@ function CustomerId() {
               >
                 {cameraError}
               </div>
-
             )}
-
 
             <div
               style={{
                 display: "flex",
-                justifyContent: "center",
+                justifyContent:
+                  "center",
                 gap: "12px",
                 flexWrap: "wrap",
                 marginTop: "16px",
               }}
             >
-
               <button
                 type="button"
                 className="upload-customer-button"
@@ -1964,32 +1515,28 @@ function CustomerId() {
                 📸 CAPTURE PHOTO
               </button>
 
-
               <button
                 type="button"
                 onClick={stopCamera}
               >
                 CANCEL
               </button>
-
             </div>
 
           </div>
-
         </div>
-
       )}
-            {/* =====================================
-          CROP MODAL
+
+      {/* =====================================
+          CROP MODAL START
+          PART 3 CONTINUES FROM HERE
       ===================================== */}
-
-      {cropOpen && (
-
+            {cropOpen && (
         <div
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0,0,0,0.78)",
+            background: "rgba(0,0,0,0.82)",
             zIndex: 9999,
             display: "flex",
             alignItems: "center",
@@ -1997,10 +1544,9 @@ function CustomerId() {
             padding: "12px",
           }}
         >
-
           <div
             style={{
-              width: "min(700px, 100%)",
+              width: "min(760px, 100%)",
               maxHeight: "95vh",
               overflowY: "auto",
               background: "#fff",
@@ -2008,7 +1554,6 @@ function CustomerId() {
               padding: "16px",
             }}
           >
-
             <h2
               style={{
                 marginTop: 0,
@@ -2018,7 +1563,6 @@ function CustomerId() {
               फोटो Crop करा
             </h2>
 
-
             <p
               style={{
                 marginTop: 0,
@@ -2026,279 +1570,794 @@ function CustomerId() {
                 fontSize: "14px",
               }}
             >
-              फोटो Mouse किंवा बोटाने Drag करून
-              योग्य जागी बसवा.
+              Crop Box हलवा किंवा कोपऱ्यांवरील
+              handles Drag करून हवा तेवढा भाग निवडा.
             </p>
 
-
             {/* =====================================
-                CROP AREA
+                IMAGE + CROP BOX
             ===================================== */}
 
             <div
-              ref={cropAreaRef}
-
               style={{
                 width: "100%",
-                aspectRatio: "1000 / 630",
-                overflow: "hidden",
+                display: "flex",
+                justifyContent: "center",
                 background: "#111",
                 borderRadius: "10px",
-                position: "relative",
-                touchAction: "none",
-                cursor: "grab",
-                userSelect: "none",
-              }}
-
-              onPointerDown={(event) => {
-
-                event.preventDefault();
-
-
-                event.currentTarget.setPointerCapture(
-                  event.pointerId
-                );
-
-
-                dragStartRef.current = {
-
-                  pointerX:
-                    event.clientX,
-
-                  pointerY:
-                    event.clientY,
-
-                  startX:
-                    offsetX,
-
-                  startY:
-                    offsetY,
-
-                };
-
-              }}
-
-              onPointerMove={(event) => {
-
-                if (!dragStartRef.current) {
-                  return;
-                }
-
-
-                event.preventDefault();
-
-
-                const deltaX =
-                  event.clientX -
-                  dragStartRef.current.pointerX;
-
-
-                const deltaY =
-                  event.clientY -
-                  dragStartRef.current.pointerY;
-
-
-                setOffsetX(
-                  dragStartRef.current.startX +
-                    deltaX
-                );
-
-
-                setOffsetY(
-                  dragStartRef.current.startY +
-                    deltaY
-                );
-
-              }}
-
-              onPointerUp={(event) => {
-
-                try {
-
-                  event.currentTarget.releasePointerCapture(
-                    event.pointerId
-                  );
-
-                } catch {
-
-                  // Ignore
-
-                }
-
-
-                dragStartRef.current = null;
-
-              }}
-
-              onPointerCancel={() => {
-
-                dragStartRef.current = null;
-
+                overflow: "hidden",
               }}
             >
-
-              {/* =====================================
-                  PHOTO
-              ===================================== */}
-
-              <img
-                ref={cropImageRef}
-                src={cropSource}
-                alt="Crop"
-                draggable="false"
-
-                style={{
-                  width: "100%",
-                  height: "100%",
-
-                  objectFit: "cover",
-
-                  transform:
-                    `translate(${offsetX}px, ${offsetY}px) scale(${zoom})`,
-
-                  transformOrigin:
-                    "center center",
-
-                  display: "block",
-
-                  pointerEvents: "none",
-                }}
-              />
-
-
-              {/* =====================================
-                  3 x 3 CROP GRID
-              ===================================== */}
-
               <div
+                ref={cropAreaRef}
                 style={{
-                  position: "absolute",
-                  inset: 0,
-                  pointerEvents: "none",
-                  zIndex: 5,
+                  position: "relative",
+                  display: "inline-block",
+                  maxWidth: "100%",
+                  lineHeight: 0,
+                  overflow: "hidden",
+                  userSelect: "none",
+                  touchAction: "none",
                 }}
               >
+                {/* FULL PHOTO */}
 
-                {/* VERTICAL LINE 1 */}
+                <img
+                  ref={cropImageRef}
+                  src={cropSource}
+                  alt="Crop"
+                  draggable="false"
+                  style={{
+                    display: "block",
+                    maxWidth: "100%",
+                    width: "auto",
+                    height: "auto",
+                    maxHeight: "65vh",
+                    objectFit: "contain",
+                    userSelect: "none",
+                    pointerEvents: "none",
+                  }}
+                />
+
+                {/* =====================================
+                    CROP SELECTION BOX
+                ===================================== */}
 
                 <div
                   style={{
                     position: "absolute",
-                    left: "33.333%",
-                    top: 0,
-                    bottom: 0,
-                    width: "1px",
-                    background:
-                      "rgba(255,255,255,0.9)",
+                    left: `${cropBox.x}%`,
+                    top: `${cropBox.y}%`,
+                    width: `${cropBox.width}%`,
+                    height: `${cropBox.height}%`,
+                    border: "2px solid #ffffff",
+                    boxSizing: "border-box",
+                    cursor: "move",
+                    touchAction: "none",
+                    zIndex: 10,
+                    boxShadow:
+                      "0 0 0 9999px rgba(0,0,0,0.48)",
                   }}
-                />
 
+                  // ==================================
+                  // MOVE CROP BOX
+                  // ==================================
 
-                {/* VERTICAL LINE 2 */}
+                  onPointerDown={(event) => {
+                    if (
+                      event.target.dataset.resize ===
+                      "true"
+                    ) {
+                      return;
+                    }
 
-                <div
-                  style={{
-                    position: "absolute",
-                    left: "66.666%",
-                    top: 0,
-                    bottom: 0,
-                    width: "1px",
-                    background:
-                      "rgba(255,255,255,0.9)",
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    try {
+                      event.currentTarget.setPointerCapture(
+                        event.pointerId
+                      );
+                    } catch {
+                      // Ignore
+                    }
+
+                    cropDragRef.current = {
+                      pointerX:
+                        event.clientX,
+
+                      pointerY:
+                        event.clientY,
+
+                      startX:
+                        cropBox.x,
+
+                      startY:
+                        cropBox.y,
+
+                      width:
+                        cropBox.width,
+
+                      height:
+                        cropBox.height,
+                    };
                   }}
-                />
 
+                  onPointerMove={(event) => {
+                    if (!cropDragRef.current) {
+                      return;
+                    }
 
-                {/* HORIZONTAL LINE 1 */}
+                    event.preventDefault();
 
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "33.333%",
-                    left: 0,
-                    right: 0,
-                    height: "1px",
-                    background:
-                      "rgba(255,255,255,0.9)",
+                    const area =
+                      cropAreaRef.current?.getBoundingClientRect();
+
+                    if (
+                      !area ||
+                      !area.width ||
+                      !area.height
+                    ) {
+                      return;
+                    }
+
+                    const dx =
+                      ((event.clientX -
+                        cropDragRef.current.pointerX) /
+                        area.width) *
+                      100;
+
+                    const dy =
+                      ((event.clientY -
+                        cropDragRef.current.pointerY) /
+                        area.height) *
+                      100;
+
+                    let newX =
+                      cropDragRef.current.startX +
+                      dx;
+
+                    let newY =
+                      cropDragRef.current.startY +
+                      dy;
+
+                    newX = Math.max(
+                      0,
+                      Math.min(
+                        newX,
+                        100 -
+                          cropDragRef.current.width
+                      )
+                    );
+
+                    newY = Math.max(
+                      0,
+                      Math.min(
+                        newY,
+                        100 -
+                          cropDragRef.current.height
+                      )
+                    );
+
+                    setCropBox(
+                      (previous) => ({
+                        ...previous,
+                        x: newX,
+                        y: newY,
+                      })
+                    );
                   }}
-                />
 
+                  onPointerUp={(event) => {
+                    try {
+                      event.currentTarget.releasePointerCapture(
+                        event.pointerId
+                      );
+                    } catch {
+                      // Ignore
+                    }
 
-                {/* HORIZONTAL LINE 2 */}
-
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "66.666%",
-                    left: 0,
-                    right: 0,
-                    height: "1px",
-                    background:
-                      "rgba(255,255,255,0.9)",
+                    cropDragRef.current = null;
                   }}
-                />
 
-
-                {/* CROP BORDER */}
-
-                <div
-                  style={{
-                    position: "absolute",
-                    inset: "3px",
-                    border:
-                      "2px solid rgba(255,255,255,0.98)",
-                    borderRadius: "4px",
+                  onPointerCancel={() => {
+                    cropDragRef.current = null;
                   }}
-                />
+                >
+                  {/* =================================
+                      3 x 3 GRID
+                  ================================= */}
 
+                  <div
+                    style={{
+                      position: "absolute",
+                      left: "33.333%",
+                      top: 0,
+                      bottom: 0,
+                      width: "1px",
+                      background:
+                        "rgba(255,255,255,0.85)",
+                      pointerEvents: "none",
+                    }}
+                  />
+
+                  <div
+                    style={{
+                      position: "absolute",
+                      left: "66.666%",
+                      top: 0,
+                      bottom: 0,
+                      width: "1px",
+                      background:
+                        "rgba(255,255,255,0.85)",
+                      pointerEvents: "none",
+                    }}
+                  />
+
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "33.333%",
+                      left: 0,
+                      right: 0,
+                      height: "1px",
+                      background:
+                        "rgba(255,255,255,0.85)",
+                      pointerEvents: "none",
+                    }}
+                  />
+
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "66.666%",
+                      left: 0,
+                      right: 0,
+                      height: "1px",
+                      background:
+                        "rgba(255,255,255,0.85)",
+                      pointerEvents: "none",
+                    }}
+                  />
+
+                  {/* =================================
+                      TOP LEFT HANDLE
+                  ================================= */}
+
+                  <div
+                    data-resize="true"
+                    onPointerDown={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+
+                      try {
+                        event.currentTarget.setPointerCapture(
+                          event.pointerId
+                        );
+                      } catch {
+                        // Ignore
+                      }
+
+                      cropResizeRef.current = {
+                        corner: "tl",
+                        pointerX:
+                          event.clientX,
+                        pointerY:
+                          event.clientY,
+                        startBox: {
+                          ...cropBox,
+                        },
+                      };
+                    }}
+
+                    onPointerMove={(event) => {
+                      const resize =
+                        cropResizeRef.current;
+
+                      if (
+                        !resize ||
+                        resize.corner !== "tl"
+                      ) {
+                        return;
+                      }
+
+                      event.preventDefault();
+
+                      const area =
+                        cropAreaRef.current?.getBoundingClientRect();
+
+                      if (
+                        !area ||
+                        !area.width ||
+                        !area.height
+                      ) {
+                        return;
+                      }
+
+                      const dx =
+                        ((event.clientX -
+                          resize.pointerX) /
+                          area.width) *
+                        100;
+
+                      const dy =
+                        ((event.clientY -
+                          resize.pointerY) /
+                          area.height) *
+                        100;
+
+                      const start =
+                        resize.startBox;
+
+                      let newX =
+                        start.x + dx;
+
+                      let newY =
+                        start.y + dy;
+
+                      let newWidth =
+                        start.width - dx;
+
+                      let newHeight =
+                        start.height - dy;
+
+                      if (newX < 0) {
+                        newWidth += newX;
+                        newX = 0;
+                      }
+
+                      if (newY < 0) {
+                        newHeight += newY;
+                        newY = 0;
+                      }
+
+                      if (
+                        newWidth < 10 ||
+                        newHeight < 10
+                      ) {
+                        return;
+                      }
+
+                      setCropBox({
+                        x: newX,
+                        y: newY,
+                        width: newWidth,
+                        height: newHeight,
+                      });
+                    }}
+
+                    onPointerUp={() => {
+                      cropResizeRef.current =
+                        null;
+                    }}
+
+                    onPointerCancel={() => {
+                      cropResizeRef.current =
+                        null;
+                    }}
+
+                    style={{
+                      position: "absolute",
+                      left: "-9px",
+                      top: "-9px",
+                      width: "18px",
+                      height: "18px",
+                      borderRadius: "50%",
+                      background: "#ffffff",
+                      border:
+                        "2px solid #111",
+                      cursor:
+                        "nwse-resize",
+                      zIndex: 30,
+                      touchAction: "none",
+                    }}
+                  />
+
+                  {/* =================================
+                      TOP RIGHT HANDLE
+                  ================================= */}
+
+                  <div
+                    data-resize="true"
+                    onPointerDown={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+
+                      try {
+                        event.currentTarget.setPointerCapture(
+                          event.pointerId
+                        );
+                      } catch {
+                        // Ignore
+                      }
+
+                      cropResizeRef.current = {
+                        corner: "tr",
+                        pointerX:
+                          event.clientX,
+                        pointerY:
+                          event.clientY,
+                        startBox: {
+                          ...cropBox,
+                        },
+                      };
+                    }}
+
+                    onPointerMove={(event) => {
+                      const resize =
+                        cropResizeRef.current;
+
+                      if (
+                        !resize ||
+                        resize.corner !== "tr"
+                      ) {
+                        return;
+                      }
+
+                      event.preventDefault();
+
+                      const area =
+                        cropAreaRef.current?.getBoundingClientRect();
+
+                      if (
+                        !area ||
+                        !area.width ||
+                        !area.height
+                      ) {
+                        return;
+                      }
+
+                      const dx =
+                        ((event.clientX -
+                          resize.pointerX) /
+                          area.width) *
+                        100;
+
+                      const dy =
+                        ((event.clientY -
+                          resize.pointerY) /
+                          area.height) *
+                        100;
+
+                      const start =
+                        resize.startBox;
+
+                      let newY =
+                        start.y + dy;
+
+                      let newWidth =
+                        start.width + dx;
+
+                      let newHeight =
+                        start.height - dy;
+
+                      if (newY < 0) {
+                        newHeight += newY;
+                        newY = 0;
+                      }
+
+                      if (
+                        start.x +
+                          newWidth >
+                        100
+                      ) {
+                        newWidth =
+                          100 - start.x;
+                      }
+
+                      if (
+                        newWidth < 10 ||
+                        newHeight < 10
+                      ) {
+                        return;
+                      }
+
+                      setCropBox({
+                        x: start.x,
+                        y: newY,
+                        width: newWidth,
+                        height: newHeight,
+                      });
+                    }}
+
+                    onPointerUp={() => {
+                      cropResizeRef.current =
+                        null;
+                    }}
+
+                    onPointerCancel={() => {
+                      cropResizeRef.current =
+                        null;
+                    }}
+
+                    style={{
+                      position: "absolute",
+                      right: "-9px",
+                      top: "-9px",
+                      width: "18px",
+                      height: "18px",
+                      borderRadius: "50%",
+                      background: "#ffffff",
+                      border:
+                        "2px solid #111",
+                      cursor:
+                        "nesw-resize",
+                      zIndex: 30,
+                      touchAction: "none",
+                    }}
+                  />
+
+                  {/* =================================
+                      BOTTOM LEFT HANDLE
+                  ================================= */}
+
+                  <div
+                    data-resize="true"
+                    onPointerDown={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+
+                      try {
+                        event.currentTarget.setPointerCapture(
+                          event.pointerId
+                        );
+                      } catch {
+                        // Ignore
+                      }
+
+                      cropResizeRef.current = {
+                        corner: "bl",
+                        pointerX:
+                          event.clientX,
+                        pointerY:
+                          event.clientY,
+                        startBox: {
+                          ...cropBox,
+                        },
+                      };
+                    }}
+
+                    onPointerMove={(event) => {
+                      const resize =
+                        cropResizeRef.current;
+
+                      if (
+                        !resize ||
+                        resize.corner !== "bl"
+                      ) {
+                        return;
+                      }
+
+                      event.preventDefault();
+
+                      const area =
+                        cropAreaRef.current?.getBoundingClientRect();
+
+                      if (
+                        !area ||
+                        !area.width ||
+                        !area.height
+                      ) {
+                        return;
+                      }
+
+                      const dx =
+                        ((event.clientX -
+                          resize.pointerX) /
+                          area.width) *
+                        100;
+
+                      const dy =
+                        ((event.clientY -
+                          resize.pointerY) /
+                          area.height) *
+                        100;
+
+                      const start =
+                        resize.startBox;
+
+                      let newX =
+                        start.x + dx;
+
+                      let newWidth =
+                        start.width - dx;
+
+                      let newHeight =
+                        start.height + dy;
+
+                      if (newX < 0) {
+                        newWidth += newX;
+                        newX = 0;
+                      }
+
+                      if (
+                        start.y +
+                          newHeight >
+                        100
+                      ) {
+                        newHeight =
+                          100 - start.y;
+                      }
+
+                      if (
+                        newWidth < 10 ||
+                        newHeight < 10
+                      ) {
+                        return;
+                      }
+
+                      setCropBox({
+                        x: newX,
+                        y: start.y,
+                        width: newWidth,
+                        height: newHeight,
+                      });
+                    }}
+
+                    onPointerUp={() => {
+                      cropResizeRef.current =
+                        null;
+                    }}
+
+                    onPointerCancel={() => {
+                      cropResizeRef.current =
+                        null;
+                    }}
+
+                    style={{
+                      position: "absolute",
+                      left: "-9px",
+                      bottom: "-9px",
+                      width: "18px",
+                      height: "18px",
+                      borderRadius: "50%",
+                      background: "#ffffff",
+                      border:
+                        "2px solid #111",
+                      cursor:
+                        "nesw-resize",
+                      zIndex: 30,
+                      touchAction: "none",
+                    }}
+                  />
+
+                  {/* =================================
+                      BOTTOM RIGHT HANDLE
+                  ================================= */}
+
+                  <div
+                    data-resize="true"
+                    onPointerDown={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+
+                      try {
+                        event.currentTarget.setPointerCapture(
+                          event.pointerId
+                        );
+                      } catch {
+                        // Ignore
+                      }
+
+                      cropResizeRef.current = {
+                        corner: "br",
+                        pointerX:
+                          event.clientX,
+                        pointerY:
+                          event.clientY,
+                        startBox: {
+                          ...cropBox,
+                        },
+                      };
+                    }}
+
+                    onPointerMove={(event) => {
+                      const resize =
+                        cropResizeRef.current;
+
+                      if (
+                        !resize ||
+                        resize.corner !== "br"
+                      ) {
+                        return;
+                      }
+
+                      event.preventDefault();
+
+                      const area =
+                        cropAreaRef.current?.getBoundingClientRect();
+
+                      if (
+                        !area ||
+                        !area.width ||
+                        !area.height
+                      ) {
+                        return;
+                      }
+
+                      const dx =
+                        ((event.clientX -
+                          resize.pointerX) /
+                          area.width) *
+                        100;
+
+                      const dy =
+                        ((event.clientY -
+                          resize.pointerY) /
+                          area.height) *
+                        100;
+
+                      const start =
+                        resize.startBox;
+
+                      let newWidth =
+                        start.width + dx;
+
+                      let newHeight =
+                        start.height + dy;
+
+                      if (
+                        start.x +
+                          newWidth >
+                        100
+                      ) {
+                        newWidth =
+                          100 - start.x;
+                      }
+
+                      if (
+                        start.y +
+                          newHeight >
+                        100
+                      ) {
+                        newHeight =
+                          100 - start.y;
+                      }
+
+                      if (
+                        newWidth < 10 ||
+                        newHeight < 10
+                      ) {
+                        return;
+                      }
+
+                      setCropBox({
+                        x: start.x,
+                        y: start.y,
+                        width: newWidth,
+                        height: newHeight,
+                      });
+                    }}
+
+                    onPointerUp={() => {
+                      cropResizeRef.current =
+                        null;
+                    }}
+
+                    onPointerCancel={() => {
+                      cropResizeRef.current =
+                        null;
+                    }}
+
+                    style={{
+                      position: "absolute",
+                      right: "-9px",
+                      bottom: "-9px",
+                      width: "18px",
+                      height: "18px",
+                      borderRadius: "50%",
+                      background: "#ffffff",
+                      border:
+                        "2px solid #111",
+                      cursor:
+                        "nwse-resize",
+                      zIndex: 30,
+                      touchAction: "none",
+                    }}
+                  />
+                </div>
               </div>
-
             </div>
-
-
-            {/* =====================================
-                ZOOM
-            ===================================== */}
-
-            <div
-              style={{
-                marginTop: "14px",
-              }}
-            >
-
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "5px",
-                  fontWeight: 600,
-                }}
-              >
-                Zoom
-              </label>
-
-
-              <input
-                type="range"
-                min="1"
-                max="3"
-                step="0.05"
-                value={zoom}
-
-                onChange={(event) =>
-                  setZoom(
-                    Number(
-                      event.target.value
-                    )
-                  )
-                }
-
-                style={{
-                  width: "100%",
-                }}
-              />
-
-            </div>
-
 
             {/* =====================================
                 CROP BUTTONS
@@ -2310,9 +2369,9 @@ function CustomerId() {
                 gap: "10px",
                 marginTop: "16px",
                 flexWrap: "wrap",
+                justifyContent: "center",
               }}
             >
-
               <button
                 type="button"
                 className="upload-customer-button"
@@ -2321,48 +2380,28 @@ function CustomerId() {
                 CROP & SAVE
               </button>
 
-
               <button
                 type="button"
-
                 onClick={() => {
-
                   setCropOpen(false);
-
                   setCropSource("");
-
                   setCropSide(null);
 
-
-                  setZoom(1);
-
-                  setOffsetX(0);
-
-                  setOffsetY(0);
-
-
-                  dragStartRef.current = null;
-
+                  resetCropBox();
                 }}
               >
                 CANCEL
               </button>
-
             </div>
-
           </div>
-
         </div>
-
       )}
-
 
       {/* =====================================
           PHOTO VIEWER MODAL
       ===================================== */}
 
       {viewerOpen && (
-
         <div
           style={{
             position: "fixed",
@@ -2376,10 +2415,10 @@ function CustomerId() {
             padding: "16px",
           }}
         >
-
           <div
             style={{
-              width: "min(850px, 100%)",
+              width:
+                "min(850px, 100%)",
               maxHeight: "95vh",
               overflowY: "auto",
               background: "#fff",
@@ -2387,7 +2426,6 @@ function CustomerId() {
               padding: "20px",
             }}
           >
-
             <div
               style={{
                 display: "flex",
@@ -2398,11 +2436,9 @@ function CustomerId() {
                 marginBottom: "15px",
               }}
             >
-
               <h2>
                 {viewerTitle}
               </h2>
-
 
               <button
                 type="button"
@@ -2410,14 +2446,11 @@ function CustomerId() {
               >
                 ✕
               </button>
-
             </div>
-
 
             <img
               src={viewerUrl}
               alt={viewerTitle}
-
               style={{
                 width: "100%",
                 maxHeight: "65vh",
@@ -2427,34 +2460,27 @@ function CustomerId() {
               }}
             />
 
-
             <div
               style={{
                 display: "flex",
                 justifyContent: "center",
                 gap: "12px",
                 marginTop: "18px",
+                flexWrap: "wrap",
               }}
             >
-
               {viewerDownloadUrl && (
-
                 <button
                   type="button"
                   className="upload-customer-button"
-
                   onClick={() => {
-
                     window.location.href =
                       viewerDownloadUrl;
-
                   }}
                 >
                   ⬇ DOWNLOAD PHOTO
                 </button>
-
               )}
-
 
               <button
                 type="button"
@@ -2462,20 +2488,12 @@ function CustomerId() {
               >
                 CLOSE
               </button>
-
             </div>
-
           </div>
-
         </div>
-
       )}
-
     </div>
-
   );
-
 }
-
 
 export default CustomerId;
