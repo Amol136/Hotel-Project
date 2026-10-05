@@ -1297,8 +1297,8 @@ const sourceHeight =
               disabled={uploading}
             >
               {uploading
-                ? "UPLOADING..."
-                : "UPLOAD CUSTOMER ID"}
+  ? "SAVING..."
+  : "SAVE CUSTOMER ID"}
             </button>
 
           </form>

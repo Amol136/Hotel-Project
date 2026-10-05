@@ -1402,8 +1402,8 @@ const sourceHeight =
               disabled={uploading}
             >
               {uploading
-                ? "UPLOAD होत आहे..."
-                : "📤 REGISTER PHOTO UPLOAD करा"}
+  ? "SAVE होत आहे..."
+  : "💾 REGISTER PHOTO SAVE करा"}
             </button>
 
           </form>
