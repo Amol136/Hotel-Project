@@ -476,6 +476,179 @@ function AllCustomerPhotos() {
     window.location.href =
       viewerDownloadUrl;
   };
+  // =====================================
+// MAIN ADMIN - EDIT CUSTOMER ID PHOTOS
+// =====================================
+
+const editCustomerRecord = async (record) => {
+
+  const choice = window.prompt(
+    "कोणता photo बदलायचा?\n\n1 = FRONT PHOTO\n2 = BACK PHOTO"
+  );
+
+  if (choice !== "1" && choice !== "2") {
+    return;
+  }
+
+  const input = document.createElement("input");
+
+  input.type = "file";
+  input.accept = "image/*";
+
+  input.onchange = async (event) => {
+
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    try {
+
+      setError("");
+
+      const formData = new FormData();
+
+      let endpoint;
+
+      if (choice === "1") {
+
+        formData.append(
+          "frontPhoto",
+          file
+        );
+
+        endpoint =
+          `/api/customer-ids/${record.id}/main-admin-replace-front`;
+
+      } else {
+
+        formData.append(
+          "backPhoto",
+          file
+        );
+
+        endpoint =
+          `/api/customer-ids/${record.id}/main-admin-replace-back`;
+      }
+
+      const response = await apiFetch(
+        endpoint,
+        {
+          method: "PUT",
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+
+        const message =
+          await response.text();
+
+        throw new Error(
+          message ||
+          "Photo update झाला नाही."
+        );
+      }
+
+      const updatedRecord =
+        await response.json();
+
+      setRecords((previousRecords) =>
+        previousRecords.map((item) =>
+          Number(item.id) === Number(record.id)
+            ? {
+                ...item,
+                ...updatedRecord,
+              }
+            : item
+        )
+      );
+
+      window.alert(
+        choice === "1"
+          ? "Front Photo successfully updated."
+          : "Back Photo successfully updated."
+      );
+
+    } catch (err) {
+
+      console.error(
+        "Edit Customer Photo Error:",
+        err
+      );
+
+      window.alert(
+        err.message ||
+          "Photo update करताना error आला."
+      );
+    }
+  };
+
+  input.click();
+};
+  // =====================================
+// MAIN ADMIN - DELETE CUSTOMER ID
+// =====================================
+
+const deleteCustomerRecord = async (recordId) => {
+
+  const confirmed = window.confirm(
+    "हा Customer ID record delete करायचा आहे का?"
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+
+    setError("");
+
+    const response = await apiFetch(
+      `/api/customer-ids/${recordId}/main-admin`,
+      {
+        method: "DELETE",
+      }
+    );
+
+    if (!response.ok) {
+
+      const message =
+        await response.text();
+
+      throw new Error(
+        message ||
+          "Customer ID record delete झाला नाही."
+      );
+    }
+
+    // Table मधून record लगेच remove करा
+    setRecords((previousRecords) =>
+      previousRecords.filter(
+        (record) =>
+          Number(record.id) !==
+          Number(recordId)
+      )
+    );
+
+    window.alert(
+      "Customer ID record successfully deleted."
+    );
+
+  } catch (err) {
+
+    console.error(
+      "Delete Customer ID Error:",
+      err
+    );
+
+    window.alert(
+      err.message ||
+        "Record delete करताना error आला."
+    );
+  }
+};
 
   // =====================================
   // LOADING
@@ -712,6 +885,9 @@ function AllCustomerPhotos() {
                     <th>
                       BACK PHOTO
                     </th>
+                    <th>
+  ACTION
+</th>
                   </tr>
                 </thead>
 
@@ -858,6 +1034,43 @@ function AllCustomerPhotos() {
                               👁 VIEW BACK
                             </button>
                           </td>
+                          {/* ACTION */}
+
+<td>
+  <button
+  type="button"
+  onClick={() => editCustomerRecord(record)}
+  style={{
+    background: "#2563eb",
+    color: "#ffffff",
+    border: "none",
+    borderRadius: "7px",
+    padding: "9px 14px",
+    cursor: "pointer",
+    fontWeight: "600",
+    marginRight: "8px",
+  }}
+>
+  ✏️ EDIT
+</button>
+  <button
+    type="button"
+    onClick={() =>
+      deleteCustomerRecord(record.id)
+    }
+    style={{
+      background: "#dc2626",
+      color: "#ffffff",
+      border: "none",
+      borderRadius: "7px",
+      padding: "9px 14px",
+      cursor: "pointer",
+      fontWeight: "600",
+    }}
+  >
+    🗑️ DELETE
+  </button>
+</td>
 
                         </tr>
                       );

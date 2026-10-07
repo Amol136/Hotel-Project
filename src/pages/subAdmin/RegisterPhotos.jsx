@@ -444,7 +444,152 @@ function RegisterPhotos() {
     window.location.href =
       viewerDownloadUrl;
   };
+// =====================================
+// SUB ADMIN - EDIT REGISTER PHOTO
+// =====================================
 
+const editRegisterPhoto = (record) => {
+
+  const input = document.createElement("input");
+
+  input.type = "file";
+  input.accept = "image/*";
+
+  input.onchange = async (event) => {
+
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    try {
+
+      setError("");
+
+      const formData = new FormData();
+
+      formData.append(
+        "photo",
+        file
+      );
+
+      const response = await apiFetch(
+        `/api/register-photos/${record.id}/sub-admin-replace`,
+        {
+          method: "PUT",
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+
+        const message =
+          await response.text();
+
+        throw new Error(
+          message ||
+          "Register Photo update झाला नाही."
+        );
+      }
+
+      const updatedRecord =
+        await response.json();
+
+      setRecords((previousRecords) =>
+        previousRecords.map((item) =>
+          Number(item.id) === Number(record.id)
+            ? {
+                ...item,
+                ...updatedRecord,
+              }
+            : item
+        )
+      );
+
+      window.alert(
+        "Register Photo successfully updated."
+      );
+
+    } catch (err) {
+
+      console.error(
+        "Edit Register Photo Error:",
+        err
+      );
+
+      window.alert(
+        err.message ||
+        "Register Photo update करताना error आला."
+      );
+    }
+  };
+
+  input.click();
+};
+
+
+// =====================================
+// SUB ADMIN - DELETE REGISTER PHOTO
+// =====================================
+
+const deleteRegisterPhoto = async (recordId) => {
+
+  const confirmed = window.confirm(
+    "हा Register Photo record delete करायचा आहे का?"
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+
+    setError("");
+
+    const response = await apiFetch(
+      `/api/register-photos/${recordId}/sub-admin`,
+      {
+        method: "DELETE",
+      }
+    );
+
+    if (!response.ok) {
+
+      const message =
+        await response.text();
+
+      throw new Error(
+        message ||
+        "Register Photo delete झाला नाही."
+      );
+    }
+
+    setRecords((previousRecords) =>
+      previousRecords.filter(
+        (record) =>
+          Number(record.id) !==
+          Number(recordId)
+      )
+    );
+
+    window.alert(
+      "Register Photo successfully deleted."
+    );
+
+  } catch (err) {
+
+    console.error(
+      "Delete Register Photo Error:",
+      err
+    );
+
+    window.alert(
+      err.message ||
+      "Register Photo delete करताना error आला."
+    );
+  }
+};
   // =====================================
   // UI
   // =====================================
@@ -689,6 +834,9 @@ function RegisterPhotos() {
                     <th>
                       REGISTER PHOTO
                     </th>
+                    <th>
+  ACTION
+</th>
 
                   </tr>
 
@@ -784,6 +932,46 @@ function RegisterPhotos() {
                           </button>
 
                         </td>
+                        {/* ACTION */}
+
+<td>
+  <button
+    type="button"
+    onClick={() =>
+      editRegisterPhoto(record)
+    }
+    style={{
+      background: "#2563eb",
+      color: "#ffffff",
+      border: "none",
+      borderRadius: "7px",
+      padding: "9px 14px",
+      cursor: "pointer",
+      fontWeight: "600",
+      marginRight: "8px",
+    }}
+  >
+    ✏️ EDIT
+  </button>
+
+  <button
+    type="button"
+    onClick={() =>
+      deleteRegisterPhoto(record.id)
+    }
+    style={{
+      background: "#dc2626",
+      color: "#ffffff",
+      border: "none",
+      borderRadius: "7px",
+      padding: "9px 14px",
+      cursor: "pointer",
+      fontWeight: "600",
+    }}
+  >
+    🗑️ DELETE
+  </button>
+</td>
 
                       </tr>
 
